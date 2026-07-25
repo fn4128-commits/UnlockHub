@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 启动图标前景 v3：描边风格开锁标，圆角描边 + 实心锁点，轻盈现代 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- 锁体（描边，圆角） -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M18.5,21.5 H29.5 A5.5,5.5 0 0,1 35,27 V32.5 A5.5,5.5 0 0,1 29.5,38 H18.5 A5.5,5.5 0 0,1 13,32.5 V27 A5.5,5.5 0 0,1 18.5,21.5 Z"
+        android:strokeWidth="3.2"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineJoin="round" />
+
+    <!-- 锁梁：右端抬起，表示已解锁 -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M18.5,21.5 V14.5 A5.5,5.5 0 0,1 29.5,14.5 V17"
+        android:strokeWidth="3.2"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+
+    <!-- 锁孔：实心点 + 短柄 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,28.2 m-2.3,0 a2.3,2.3 0 1,0 4.6,0 a2.3,2.3 0 1,0 -4.6,0" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M24,30.2 V33.2"
+        android:strokeWidth="2.8"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+</vector>

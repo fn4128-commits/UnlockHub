@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_canvas">#0F1117</color>
+    <color name="bg_card">#1A1D27</color>
+    <color name="bg_card_elevated">#222633</color>
+    <color name="bg_sticky_start">#1E2230</color>
+    <color name="bg_sticky_end">#151820</color>
+    <color name="text_primary">#F0F2F8</color>
+    <color name="text_secondary">#9BA3B8</color>
+    <color name="text_muted">#6B7289</color>
+    <color name="text_on_accent">#FFFFFF</color>
+    <color name="accent">#6C8CFF</color>
+    <color name="accent_dark">#4A6BE0</color>
+    <color name="accent_soft">#2A3350</color>
+    <color name="accent_glow">#334878</color>
+    <color name="module_safeping">#4ECDC4</color>
+    <color name="module_memo">#FFB347</color>
+    <color name="module_routine">#B48CFF</color>
+    <color name="line">#2E3344</color>
+    <color name="line_focus">#6C8CFF</color>
+    <color name="alert">#FF6B6B</color>
+    <color name="avatar_fill">#2A3350</color>
+    <color name="avatar_ring">#6C8CFF</color>
+    <!-- 白底输入框内的文字：深色保证对比度 -->
+    <color name="input_text">#1A1D27</color>
+    <color name="input_hint">#8A8F9C</color>
+    <!-- 浅色表面（系统对话框等白底）上的文字 -->
+    <color name="text_on_light">#1A1D27</color>
+    <color name="text_on_light_secondary">#5C6272</color>
+    <color name="stat_number">#6C8CFF</color>
+    <color name="chip_selected">#6C8CFF</color>
+    <color name="chip_unselected">#2A2F3D</color>
+
+    <!-- 浅色主题配色 -->
+    <color name="bg_canvas_light_start">#F5F7FC</color>
+    <color name="bg_canvas_light_end">#E9EDF5</color>
+    <color name="bg_card_light">#FFFFFF</color>
+    <color name="bg_card_elevated_light">#F2F4FA</color>
+    <color name="bg_sticky_start_light">#FFFFFF</color>
+    <color name="bg_sticky_end_light">#EEF1F8</color>
+    <color name="text_primary_light">#1B1F2A</color>
+    <color name="text_secondary_light">#4A5165</color>
+    <color name="text_muted_light">#8A91A5</color>
+    <color name="line_light">#D8DDEA</color>
+    <color name="accent_soft_light">#E3E9FF</color>
+    <color name="avatar_fill_light">#E3E9FF</color>
+    <color name="chip_unselected_light">#E7EAF2</color>
+</resources>

@@ -1,0 +1,1184 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import { addOwnerViewer, changeLocalAccountPassword, eligibleReportWeek, getReceiverSummary, handleCustomAlert, handleInactivityAlert, handleMemoSync, handleTestWeeklyReport, handleUnlockEvent, inboxPage, listMessagesForViewer, loginLocalAccount, markMessageReadForViewer, recoverViewerUid, registerLocalAccount, route, runInactivityMonitor } from "../src/worker.js";
+
+test("eligibleReportWeek uses current week on Sunday", () => {
+  const result = eligibleReportWeek(new Date("2026-06-07T00:00:00.000Z"));
+
+  assert.equal(result.weekStart.toISOString().slice(0, 10), "2026-06-01");
+  assert.equal(result.weekEnd.toISOString().slice(0, 10), "2026-06-07");
+});
+
+test("inbox page includes query form and auth corner", () => {
+  const html = inboxPage();
+
+  assert.match(html, /UnlockHub 查询页/);
+  assert.match(html, /查询/);
+  assert.match(html, /对方 UID/);
+  assert.match(html, /authCorner/);
+  assert.match(html, /viewerId/);
+  assert.match(html, /\/register/);
+  assert.match(html, /\/login/);
+});
+
+test("app page shows register and login when signed out", async () => {
+  const db = new MemoryD1();
+  const response = await route(new Request("https://safe.example/app"), { DB: db });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /注册新账号/);
+  assert.match(html, /登录已有账号/);
+});
+
+test("login page accepts uid and password", async () => {
+  const response = await route(new Request("https://safe.example/login"), { DB: new MemoryD1() });
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /UnlockHub 登录/);
+  assert.match(html, /\/api\/login/);
+  assert.match(html, /我的 UID/);
+  assert.match(html, /忘记 UID/);
+});
+
+test("local registration creates uid and protects status with password", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+
+  assert.match(account.publicId, /^SP-/);
+  assert.equal(account.nickname, "Alex");
+
+  await assert.rejects(
+    () =>
+      route(
+        new Request(`https://safe.example/api/summary?syncId=${account.publicId}&ownerView=1&accessPassword=wrong`),
+        { DB: db }
+      ),
+    /UID or password is incorrect/
+  );
+
+  const response = await route(
+    new Request(`https://safe.example/api/summary?syncId=${account.publicId}&ownerView=1&accessPassword=secret1234`),
+    { DB: db }
+  );
+  assert.equal(response.status, 200);
+});
+
+test("two users can register independently with different uids", async () => {
+  const db = new MemoryD1();
+  const first = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+  const second = await registerLocalAccount(db, { nickname: "Jordan", password: "secret2345" });
+
+  assert.notEqual(first.publicId, second.publicId);
+  assert.equal(first.nickname, "Alex");
+  assert.equal(second.nickname, "Jordan");
+});
+
+test("registered accounts require password to sync unlock events", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+
+  await assert.rejects(
+    () =>
+      handleUnlockEvent(db, {
+        deviceId: "device-1",
+        displayName: "Alex",
+        guardianHandle: account.publicId,
+        receiverAccessKey: "wrong",
+        localDate: "2026-06-01",
+        firstUnlockAt: "2026-06-01T08:00:00+08:00",
+      }),
+    /UID or password is incorrect/
+  );
+
+  const result = await handleUnlockEvent(db, {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: account.publicId,
+    receiverAccessKey: "secret1234",
+    localDate: "2026-06-01",
+    firstUnlockAt: "2026-06-01T08:00:00+08:00",
+  });
+
+  assert.equal(result.ok, true);
+});
+
+test("summary includes owner nickname for registered accounts", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+  await handleUnlockEvent(db, {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: account.publicId,
+    receiverAccessKey: "secret1234",
+    localDate: "2026-06-01",
+    firstUnlockAt: "2026-06-01T08:00:00+08:00",
+  });
+
+  const summary = await getReceiverSummary(db, account.publicId, Date.parse("2026-06-02T08:00:00+08:00"));
+  assert.equal(summary.ownerNickname, "Alex");
+});
+
+test("change password updates auth for viewing and profile page exists", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+  await changeLocalAccountPassword(db, {
+    publicId: account.publicId,
+    currentPassword: "secret1234",
+    newPassword: "secret2345",
+  });
+
+  await assert.rejects(
+    () =>
+      route(
+        new Request(`https://safe.example/api/summary?syncId=${account.publicId}&ownerView=1&accessPassword=secret1234`),
+        { DB: db }
+      ),
+    /UID or password is incorrect/
+  );
+  const allowed = await route(
+    new Request(`https://safe.example/api/summary?syncId=${account.publicId}&ownerView=1&accessPassword=secret2345`),
+    { DB: db }
+  );
+  assert.equal(allowed.status, 200);
+
+  const profile = await route(new Request("https://safe.example/profile"), { DB: db });
+  assert.equal(profile.status, 200);
+  assert.match(await profile.text(), /修改密码/);
+});
+
+test("local login verifies uid and password", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+  const loggedIn = await loginLocalAccount(db, { publicId: account.publicId, password: "secret1234" });
+
+  assert.equal(loggedIn.publicId, account.publicId);
+  assert.equal(loggedIn.nickname, "Alex");
+  await assert.rejects(
+    () =>
+      route(
+        new Request("https://safe.example/api/login", {
+          method: "POST",
+          body: JSON.stringify({ publicId: account.publicId, password: "wrong" }),
+        }),
+        { DB: db }
+      ),
+    /UID 或密码不正确/
+  );
+});
+
+test("recover uid matches viewer nickname, owner nickname and password", async () => {
+  const db = new MemoryD1();
+  const owner = await registerLocalAccount(db, { nickname: "儿子", password: "secret1234", role: "owner" });
+  const mom = await registerLocalAccount(db, { nickname: "妈妈", password: "secret2345", role: "viewer" });
+  await addOwnerViewer(db, owner.publicId, "妈妈");
+
+  const recovered = await recoverViewerUid(db, {
+    viewerNickname: "妈妈",
+    ownerNickname: "儿子",
+    password: "secret2345",
+  });
+
+  assert.equal(recovered.publicId, mom.publicId);
+  assert.equal(recovered.nickname, "妈妈");
+  assert.equal(recovered.ownerNickname, "儿子");
+});
+
+test("reinstalled app can sync with same uid on a new device id", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+  const payload = {
+    displayName: "Alex",
+    guardianHandle: account.publicId,
+    publicId: account.publicId,
+    receiverAccessKey: "secret1234",
+    syncMode: "weekday",
+    syncWeekdaysMask: 4,
+  };
+
+  await handleUnlockEvent(db, {
+    ...payload,
+    deviceId: "device-old",
+    localDate: "2026-06-01",
+    firstUnlockAt: "2026-06-01T08:00:00+08:00",
+  });
+
+  const migrated = await handleUnlockEvent(db, {
+    ...payload,
+    deviceId: "device-new",
+    localDate: "2026-06-02",
+    firstUnlockAt: "2026-06-02T08:00:00+08:00",
+  });
+
+  assert.equal(migrated.ok, true);
+  assert.equal(db.users.size, 1);
+  assert.equal(db.users.get("device-new").public_id, account.publicId);
+  assert.equal(db.users.has("device-old"), false);
+  assert.equal(db.unlockEvents.length, 2);
+  assert.ok(db.unlockEvents.every((event) => event.device_id === "device-new"));
+});
+
+test("unlock events create one sync report message", async () => {
+  const db = new MemoryD1();
+  const syncPayload = {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: "mom",
+    syncMode: "weekday",
+    syncWeekdaysMask: 64,
+    syncIntervalDays: 7,
+  };
+
+  for (const localDate of ["2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-06", "2026-06-07"]) {
+    await handleUnlockEvent(db, {
+      ...syncPayload,
+      localDate,
+      firstUnlockAt: `${localDate}T08:00:00+08:00`,
+    });
+  }
+
+  assert.equal(db.messages.length, 1);
+  assert.equal(db.messages[0].type, "weekly_report");
+  assert.match(db.messages[0].body, /2026-06-01 至 2026-06-07/);
+});
+
+test("new sync report replaces the previous one", async () => {
+  const db = new MemoryD1();
+  const syncPayload = {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: "mom",
+    syncMode: "weekday",
+    syncWeekdaysMask: 64,
+    syncIntervalDays: 7,
+  };
+
+  const dates = [
+    "2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05", "2026-06-06", "2026-06-07",
+    "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-13", "2026-06-14",
+  ];
+  for (const localDate of dates) {
+    await handleUnlockEvent(db, {
+      ...syncPayload,
+      localDate,
+      firstUnlockAt: `${localDate}T08:00:00+08:00`,
+    });
+  }
+
+  const reports = db.messages.filter((message) => message.type === "weekly_report");
+  assert.equal(reports.length, 1);
+  assert.match(reports[0].body, /2026-06-08 至 2026-06-14/);
+});
+
+test("memo sync replaces device memos and viewers can read them", async () => {
+  const db = new MemoryD1();
+  const viewer = await registerLocalAccount(db, { nickname: "妈妈", password: "secret2345", role: "viewer" });
+  await addOwnerViewer(db, "mom", "妈妈");
+
+  const first = await handleMemoSync(db, {
+    deviceId: "device-1",
+    guardianHandle: "mom",
+    memos: [
+      { clientId: 1, title: "买菜", type: "text", content: "土豆、西红柿", updatedAt: 100 },
+      { clientId: 2, title: "作业", type: "checklist", content: '[{"t":"数学","d":true}]', pinned: true, updatedAt: 200 },
+    ],
+  });
+  assert.equal(first.ok, true);
+  assert.equal(first.synced, 2);
+
+  const response = await route(
+    new Request(
+      `https://safe.example/api/memos?syncId=mom&viewerId=${viewer.publicId}&viewerPassword=secret2345`
+    ),
+    { DB: db }
+  );
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(payload.memos.length, 2);
+  assert.equal(payload.memos[0].title, "作业"); // 置顶在前
+
+  // 再次全量同步只带一条 → 服务器整体替换
+  const second = await handleMemoSync(db, {
+    deviceId: "device-1",
+    guardianHandle: "mom",
+    memos: [{ clientId: 1, title: "买菜", type: "text", content: "只剩土豆", updatedAt: 300 }],
+  });
+  assert.equal(second.synced, 1);
+  assert.equal((db.memos || []).length, 1);
+  assert.equal(db.memos[0].content, "只剩土豆");
+});
+
+test("custom alerts create a message for the guardian", async () => {
+  const db = new MemoryD1();
+  const result = await handleCustomAlert(db, {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: "mom",
+    text: "已到家，勿念",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(db.messages.length, 1);
+  assert.equal(db.messages[0].type, "custom_alert");
+  assert.equal(db.messages[0].body, "已到家，勿念");
+});
+
+test("memo list requires viewer allowlist", async () => {
+  const db = new MemoryD1();
+  const outsider = await registerLocalAccount(db, { nickname: "路人", password: "secret3456", role: "viewer" });
+  await handleMemoSync(db, {
+    deviceId: "device-1",
+    guardianHandle: "mom",
+    memos: [{ clientId: 1, title: "秘密", type: "text", content: "x" }],
+  });
+  await assert.rejects(
+    route(
+      new Request(
+        `https://safe.example/api/memos?syncId=mom&viewerId=${outsider.publicId}&viewerPassword=secret3456`
+      ),
+      { DB: db }
+    ),
+    /查看名单/
+  );
+});
+
+test("inbox page renders memo section", () => {
+  const page = inboxPage();
+  assert.match(page, /renderMemosHtml/);
+  assert.match(page, /api\/memos/);
+});
+
+test("inactivity alerts are deduplicated", async () => {
+  const db = new MemoryD1();
+  const payload = {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: "mom",
+    lastActivityAt: "2026-06-01T08:00:00+08:00",
+    inactiveHours: 72,
+  };
+
+  const first = await handleInactivityAlert(db, payload);
+  const second = await handleInactivityAlert(db, payload);
+
+  assert.equal(first.ok, true);
+  assert.equal(second.duplicate, true);
+  assert.equal(db.messages.length, 1);
+});
+
+test("scheduled monitor creates alert when cloud sees 72 hours of silence", async () => {
+  const db = new MemoryD1();
+  await handleUnlockEvent(db, {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: "mom",
+    localDate: "2026-06-01",
+    firstUnlockAt: "2026-06-01T08:00:00+08:00",
+    syncMode: "weekday",
+    syncWeekdaysMask: 4,
+  });
+
+  const result = await runInactivityMonitor(db, Date.parse("2026-06-04T09:00:00+08:00"));
+  const second = await runInactivityMonitor(db, Date.parse("2026-06-04T10:00:00+08:00"));
+
+  assert.equal(result.alertsCreated, 1);
+  assert.equal(second.alertsCreated, 0);
+  assert.equal(db.messages.length, 1);
+  assert.equal(db.messages[0].type, "inactivity_alert");
+});
+
+test("route returns receiver messages for allowed viewers", async () => {
+  const db = new MemoryD1();
+  const viewer = await registerLocalAccount(db, { nickname: "妈妈", password: "secret2345", role: "viewer" });
+  await addOwnerViewer(db, "mom", "妈妈");
+  await handleInactivityAlert(db, {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: "mom",
+    lastActivityAt: "2026-06-01T08:00:00+08:00",
+    inactiveHours: 72,
+  });
+
+  const response = await route(
+    new Request(
+      `https://safe.example/api/messages?syncId=mom&viewerId=${viewer.publicId}&viewerPassword=secret2345`
+    ),
+    { DB: db }
+  );
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.messages.length, 1);
+  assert.equal(payload.messages[0].type, "inactivity_alert");
+});
+
+test("route returns receiver unlock records", async () => {
+  const db = new MemoryD1();
+  // 记录端首次同步时设置 receiver 访问密钥（TOFU）。
+  await handleUnlockEvent(db, {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: "mom",
+    receiverAccessKey: "family-key-123",
+    localDate: "2026-06-01",
+    firstUnlockAt: "2026-06-01T08:00:00+08:00",
+  });
+
+  // 无密钥 → 默认拒绝（安全加固：不能仅凭 UID 就读取）。
+  await assert.rejects(
+    route(new Request("https://safe.example/api/unlock-events?guardianHandle=mom"), { DB: db })
+  );
+
+  // 带正确密钥（走请求头）→ 可读。
+  const response = await route(new Request("https://safe.example/api/unlock-events?guardianHandle=mom", {
+    headers: { "x-access-key": "family-key-123" },
+  }), { DB: db });
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.events.length, 1);
+  assert.equal(payload.events[0].local_date, "2026-06-01");
+});
+
+test("summary reports active and inactive states", async () => {
+  const db = new MemoryD1();
+  await handleUnlockEvent(db, {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: "mom",
+    localDate: "2026-06-01",
+    firstUnlockAt: "2026-06-01T08:00:00+08:00",
+  });
+
+  const active = await getReceiverSummary(db, "mom", Date.parse("2026-06-02T08:00:00+08:00"));
+  const inactive = await getReceiverSummary(db, "mom", Date.parse("2026-06-04T09:00:00+08:00"));
+
+  assert.equal(active.status, "active");
+  assert.equal(active.inactiveHours, 24);
+  assert.equal(inactive.status, "inactive_alert");
+  assert.equal(inactive.inactiveHours, 73);
+});
+
+test("viewer must be on allowlist to read messages", async () => {
+  const db = new MemoryD1();
+  const owner = await registerLocalAccount(db, { nickname: "儿子", password: "secret1234", role: "owner" });
+  const viewer = await registerLocalAccount(db, { nickname: "妈妈", password: "secret2345", role: "viewer" });
+  await handleUnlockEvent(db, {
+    deviceId: "device-1",
+    displayName: "儿子",
+    guardianHandle: owner.publicId,
+    receiverAccessKey: "secret1234",
+    localDate: "2026-06-01",
+    firstUnlockAt: "2026-06-01T08:00:00+08:00",
+  });
+
+  await assert.rejects(
+    () =>
+      route(
+        new Request(
+          `https://safe.example/api/messages?syncId=${owner.publicId}&viewerId=${viewer.publicId}&viewerPassword=secret2345`
+        ),
+        { DB: db }
+      ),
+    /未在对方的查看名单中/
+  );
+
+  await addOwnerViewer(db, owner.publicId, "妈妈");
+  const allowed = await route(
+    new Request(
+      `https://safe.example/api/messages?syncId=${owner.publicId}&viewerId=${viewer.publicId}&viewerPassword=secret2345`
+    ),
+    { DB: db }
+  );
+
+  assert.equal(allowed.status, 200);
+});
+
+test("viewer read status is tracked per nickname", async () => {
+  const db = new MemoryD1();
+  const owner = await registerLocalAccount(db, { nickname: "儿子", password: "secret1234", role: "owner" });
+  const mom = await registerLocalAccount(db, { nickname: "妈妈", password: "secret2345", role: "viewer" });
+  await addOwnerViewer(db, owner.publicId, "妈妈");
+
+  await handleUnlockEvent(db, {
+    deviceId: "device-1",
+    displayName: "儿子",
+    guardianHandle: owner.publicId,
+    receiverAccessKey: "secret1234",
+    localDate: "2026-06-01",
+    firstUnlockAt: "2026-06-01T08:00:00+08:00",
+  });
+  const report = await handleTestWeeklyReport(db, {
+    deviceId: "device-1",
+    displayName: "儿子",
+    guardianHandle: owner.publicId,
+    receiverAccessKey: "secret1234",
+  });
+
+  const before = await listMessagesForViewer(db, owner.publicId, mom.publicId);
+  assert.equal(before[0].read_at, null);
+
+  await markMessageReadForViewer(db, report.messageId, owner.publicId, mom);
+
+  const after = await listMessagesForViewer(db, owner.publicId, mom.publicId);
+  assert.ok(after[0].read_at);
+
+  const response = await route(
+    new Request(`https://safe.example/api/messages/${report.messageId}/read`, {
+      method: "POST",
+      body: JSON.stringify({
+        syncId: owner.publicId,
+        viewerId: mom.publicId,
+        viewerPassword: "secret2345",
+      }),
+    }),
+    { DB: db }
+  );
+  assert.equal(response.status, 200);
+});
+
+test("test weekly report creates a visible message from existing records", async () => {
+  const db = new MemoryD1();
+  await handleUnlockEvent(db, {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: "mom",
+    localDate: "2026-06-01",
+    firstUnlockAt: "2026-06-01T08:00:00+08:00",
+    syncMode: "weekday",
+    syncWeekdaysMask: 4,
+  });
+
+  const result = await handleTestWeeklyReport(db, {
+    deviceId: "device-1",
+    displayName: "Alex",
+    guardianHandle: "mom",
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(db.messages.length, 1);
+  assert.equal(db.messages[0].title, "Alex 的测试状态周报");
+});
+
+class MemoryD1 {
+  constructor() {
+    this.users = new Map();
+    this.unlockEvents = [];
+    this.weeklyReports = [];
+    this.inactivityAlerts = [];
+    this.messages = [];
+    this.receiverKeys = new Map();
+    this.accounts = new Map();
+    this.localAccounts = new Map();
+    this.sessions = new Map();
+    this.ownerViewers = [];
+    this.messageReads = [];
+    this.nextMessageId = 1;
+    this.nextOwnerViewerId = 1;
+  }
+
+  prepare(sql) {
+    return new Statement(this, sql);
+  }
+}
+
+class Statement {
+  constructor(db, sql) {
+    this.db = db;
+    this.sql = sql.replace(/\s+/g, " ").trim();
+    this.values = [];
+  }
+
+  bind(...values) {
+    this.values = values;
+    return this;
+  }
+
+  async run() {
+    const sql = this.sql;
+    const values = this.values;
+    if (sql.startsWith("INSERT INTO users")) {
+      const publicId = values[1] || null;
+      if (publicId) {
+        for (const user of this.db.users.values()) {
+          if (user.public_id === publicId && user.device_id !== values[0]) {
+            throw new Error("UNIQUE constraint failed: users.public_id");
+          }
+        }
+      }
+      this.db.users.set(values[0], {
+        device_id: values[0],
+        public_id: values[1] || null,
+        display_name: values[2],
+        guardian_handle: values[3],
+        sync_mode: values[4] || "weekday",
+        sync_weekdays_mask: Number(values[5] || 1),
+        sync_anchor_date: values[6] || "",
+        sync_interval_days: Number(values[7] || 7),
+      });
+      return { meta: {} };
+    }
+    if (sql.startsWith("DELETE FROM users")) {
+      this.db.users.delete(values[0]);
+      return { meta: {} };
+    }
+    if (sql.startsWith("UPDATE unlock_events SET device_id")) {
+      for (const event of this.db.unlockEvents) {
+        if (event.device_id === values[1]) {
+          event.device_id = values[0];
+        }
+      }
+      return { meta: {} };
+    }
+    if (sql.startsWith("UPDATE weekly_reports SET device_id")) {
+      for (const report of this.db.weeklyReports) {
+        if (report.device_id === values[1]) {
+          report.device_id = values[0];
+        }
+      }
+      return { meta: {} };
+    }
+    if (sql.startsWith("UPDATE inactivity_alerts SET device_id")) {
+      for (const alert of this.db.inactivityAlerts) {
+        if (alert.device_id === values[1]) {
+          alert.device_id = values[0];
+        }
+      }
+      return { meta: {} };
+    }
+    if (sql.startsWith("UPDATE messages SET sender_device_id")) {
+      for (const message of this.db.messages) {
+        if (message.sender_device_id === values[1]) {
+          message.sender_device_id = values[0];
+        }
+      }
+      return { meta: {} };
+    }
+    if (sql.startsWith("DELETE FROM unlock_events")) {
+      const deviceId = values[0];
+      const limit = Number(values[1] || 0);
+      const owned = this.db.unlockEvents
+        .filter((event) => event.device_id === deviceId)
+        .sort((a, b) => a.local_date.localeCompare(b.local_date));
+      const removeIds = new Set(owned.slice(0, limit).map((event) => `${event.device_id}:${event.local_date}`));
+      this.db.unlockEvents = this.db.unlockEvents.filter(
+        (event) => !removeIds.has(`${event.device_id}:${event.local_date}`)
+      );
+      return { meta: {} };
+    }
+    if (sql.startsWith("INSERT OR IGNORE INTO unlock_events")) {
+      const exists = this.db.unlockEvents.some((event) => event.device_id === values[0] && event.local_date === values[3]);
+      if (!exists) {
+        this.db.unlockEvents.push({
+          device_id: values[0],
+          display_name: values[1],
+          guardian_handle: values[2],
+          local_date: values[3],
+          first_unlock_at: values[4],
+        });
+      }
+      return { meta: {} };
+    }
+    if (sql.startsWith("INSERT INTO messages")) {
+      const id = this.db.nextMessageId++;
+      this.db.messages.push({
+        id,
+        recipient_handle: values[0],
+        sender_device_id: values[1],
+        sender_display_name: values[2],
+        type: values[3],
+        title: values[4],
+        body: values[5],
+        read_at: null,
+        created_at: "2026-06-07 08:00:00",
+      });
+      return { meta: { last_row_id: id } };
+    }
+    if (sql.startsWith("INSERT INTO weekly_reports")) {
+      this.db.weeklyReports.push({
+        device_id: values[0],
+        guardian_handle: values[1],
+        week_start: values[2],
+        week_end: values[3],
+        message_id: values[4],
+      });
+      return { meta: {} };
+    }
+    if (sql.startsWith("INSERT INTO inactivity_alerts")) {
+      this.db.inactivityAlerts.push({
+        device_id: values[0],
+        guardian_handle: values[1],
+        last_activity_at: values[2],
+        inactive_hours: values[3],
+        message_id: values[4],
+      });
+      return { meta: {} };
+    }
+    if (sql.startsWith("INSERT INTO receiver_keys")) {
+      // INSERT ... (guardian_handle, access_key, access_key_hash, access_key_salt, ...) VALUES(?1, '', ?2, ?3, ...)
+      this.db.receiverKeys.set(values[0], { access_key: "", access_key_hash: values[1], access_key_salt: values[2] });
+      return { meta: {} };
+    }
+    if (sql.startsWith("INSERT INTO accounts")) {
+      const existing = Array.from(this.db.accounts.values()).find((account) => account.google_sub === values[1]);
+      const account = existing || {
+        id: values[0],
+        google_sub: values[1],
+        public_id: values[5],
+      };
+      account.email = values[2];
+      account.name = values[3];
+      account.picture = values[4];
+      this.db.accounts.set(account.id, account);
+      return { meta: {} };
+    }
+    if (sql.startsWith("INSERT INTO account_sessions")) {
+      this.db.sessions.set(values[0], {
+        session_id: values[0],
+        account_id: values[1],
+        expires_at: values[2],
+      });
+      return { meta: {} };
+    }
+    if (sql.startsWith("INSERT INTO local_accounts")) {
+      if (this.db.localAccounts.has(values[0])) {
+        throw new Error("UNIQUE constraint failed");
+      }
+      this.db.localAccounts.set(values[0], {
+        public_id: values[0],
+        nickname: values[1],
+        password_salt: values[2],
+        password_hash: values[3],
+        account_role: values[4] || "owner",
+      });
+      return { meta: {} };
+    }
+    if (sql.startsWith("INSERT INTO owner_viewers")) {
+      const duplicate = this.db.ownerViewers.some(
+        (item) => item.owner_public_id === values[0] && item.viewer_nickname === values[1]
+      );
+      if (duplicate) {
+        throw new Error("UNIQUE constraint failed");
+      }
+      const id = this.db.nextOwnerViewerId++;
+      this.db.ownerViewers.push({
+        id,
+        owner_public_id: values[0],
+        viewer_nickname: values[1],
+        created_at: "2026-06-07 08:00:00",
+        updated_at: "2026-06-07 08:00:00",
+      });
+      return { meta: { last_row_id: id } };
+    }
+    if (sql.startsWith("INSERT INTO message_reads")) {
+      const [messageId, ownerPublicId, viewerPublicId, viewerNickname] = values;
+      const existing = this.db.messageReads.find(
+        (row) => row.message_id === messageId && row.viewer_public_id === viewerPublicId
+      );
+      if (existing) {
+        if (!existing.read_at) {
+          existing.read_at = "2026-06-07 08:10:00";
+        }
+        existing.viewer_nickname = viewerNickname;
+      } else {
+        this.db.messageReads.push({
+          message_id: messageId,
+          owner_public_id: ownerPublicId,
+          viewer_public_id: viewerPublicId,
+          viewer_nickname: viewerNickname,
+          read_at: "2026-06-07 08:10:00",
+        });
+      }
+      return { meta: {} };
+    }
+    if (sql.startsWith("UPDATE owner_viewers")) {
+      const viewer = this.db.ownerViewers.find((item) => item.id === values[0] && item.owner_public_id === values[1]);
+      if (!viewer) {
+        return { meta: { changes: 0 } };
+      }
+      viewer.viewer_nickname = values[2];
+      viewer.updated_at = "2026-06-07 08:10:00";
+      return { meta: { changes: 1 } };
+    }
+    if (sql.startsWith("DELETE FROM owner_viewers")) {
+      const index = this.db.ownerViewers.findIndex((item) => item.id === values[0] && item.owner_public_id === values[1]);
+      if (index < 0) {
+        return { meta: { changes: 0 } };
+      }
+      this.db.ownerViewers.splice(index, 1);
+      return { meta: { changes: 1 } };
+    }
+    if (sql.startsWith("UPDATE local_accounts")) {
+      const account = this.db.localAccounts.get(values[0]);
+      if (!account) throw new Error("Account not found");
+      account.password_salt = values[1];
+      account.password_hash = values[2];
+      return { meta: {} };
+    }
+    if (sql.startsWith("UPDATE receiver_keys")) {
+      // UPDATE ... SET ... access_key_hash = ?2, access_key_salt = ?3 ... WHERE guardian_handle = ?1
+      this.db.receiverKeys.set(values[0], { access_key: "", access_key_hash: values[1], access_key_salt: values[2] });
+      return { meta: {} };
+    }
+    if (sql.startsWith("DELETE FROM account_sessions")) {
+      this.db.sessions.delete(values[0]);
+      return { meta: {} };
+    }
+    if (sql.startsWith("DELETE FROM memos")) {
+      this.db.memos = (this.db.memos || []).filter((memo) => memo.device_id !== values[0]);
+      return { meta: {} };
+    }
+    if (sql.startsWith("INSERT INTO memos")) {
+      this.db.memos = this.db.memos || [];
+      this.db.memos.push({
+        device_id: values[0],
+        guardian_handle: values[1],
+        client_id: values[2],
+        title: values[3],
+        content: values[4],
+        type: values[5],
+        memo_date: values[6],
+        pinned: values[7],
+        done: values[8],
+        updated_at: values[9],
+      });
+      return { meta: {} };
+    }
+    if (sql.startsWith("UPDATE memos SET device_id")) {
+      for (const memo of this.db.memos || []) {
+        if (memo.device_id === values[1]) {
+          memo.device_id = values[0];
+        }
+      }
+      return { meta: {} };
+    }
+    if (sql.startsWith("DELETE FROM message_reads")) {
+      const removeIds = new Set(
+        this.db.messages
+          .filter(
+            (message) =>
+              message.recipient_handle === values[0] &&
+              message.sender_device_id === values[1] &&
+              message.type === "weekly_report" &&
+              message.id !== values[2]
+          )
+          .map((message) => message.id)
+      );
+      this.db.messageReads = this.db.messageReads.filter((row) => !removeIds.has(row.message_id));
+      return { meta: {} };
+    }
+    if (sql.startsWith("DELETE FROM messages")) {
+      this.db.messages = this.db.messages.filter(
+        (message) =>
+          !(
+            message.recipient_handle === values[0] &&
+            message.sender_device_id === values[1] &&
+            message.type === "weekly_report" &&
+            message.id !== values[2]
+          )
+      );
+      return { meta: {} };
+    }
+    if (sql.startsWith("UPDATE messages SET read_at") && sql.includes("recipient_handle")) {
+      const message = this.db.messages.find((item) => item.id === values[0] && item.recipient_handle === values[1]);
+      if (message && !message.read_at) {
+        message.read_at = "2026-06-07 08:10:00";
+      }
+      return { meta: {} };
+    }
+    if (sql.startsWith("UPDATE messages SET read_at")) {
+      const message = this.db.messages.find((item) => item.id === values[0]);
+      if (message && !message.read_at) {
+        message.read_at = "2026-06-07 08:10:00";
+      }
+      return { meta: {} };
+    }
+    throw new Error(`Unhandled run SQL: ${sql}`);
+  }
+
+  async first() {
+    const sql = this.sql;
+    const values = this.values;
+    if (sql.startsWith("SELECT device_id FROM users") && sql.includes("device_id <>")) {
+      const deviceId = values[0];
+      const lookupId = String(values[1] || "").toUpperCase();
+      const user = Array.from(this.db.users.values()).find((item) => {
+        if (item.device_id === deviceId) {
+          return false;
+        }
+        const publicId = String(item.public_id || "").toUpperCase();
+        const guardianHandle = String(item.guardian_handle || "").toUpperCase();
+        return publicId === lookupId || guardianHandle === lookupId;
+      });
+      return user ? { device_id: user.device_id } : null;
+    }
+    if (sql.startsWith("SELECT id FROM weekly_reports")) {
+      return this.db.weeklyReports.find((report) => report.device_id === values[0] && report.week_start === values[1]) || null;
+    }
+    if (sql.startsWith("SELECT sync_mode, sync_weekdays_mask, sync_anchor_date, sync_interval_days FROM users")) {
+      const user = this.db.users.get(values[0]);
+      return user || null;
+    }
+    if (sql.startsWith("SELECT COUNT(*) AS total FROM unlock_events")) {
+      const total = this.db.unlockEvents.filter((event) => event.device_id === values[0]).length;
+      return { total };
+    }
+    if (sql.startsWith("SELECT id FROM inactivity_alerts")) {
+      return this.db.inactivityAlerts.find((alert) => alert.device_id === values[0] && alert.last_activity_at === values[1]) || null;
+    }
+    if (sql.startsWith("SELECT first_unlock_at FROM unlock_events")) {
+      const event = this.db.unlockEvents
+        .filter((item) => item.device_id === values[0])
+        .sort((a, b) => b.first_unlock_at.localeCompare(a.first_unlock_at))[0];
+      return event ? { first_unlock_at: event.first_unlock_at } : null;
+    }
+    if (sql.startsWith("SELECT device_id, display_name, local_date")) {
+      const event = this.db.unlockEvents
+        .filter((item) => item.guardian_handle === values[0])
+        .sort((a, b) => b.first_unlock_at.localeCompare(a.first_unlock_at))[0];
+      return event
+        ? {
+            device_id: event.device_id,
+            display_name: event.display_name,
+            local_date: event.local_date,
+            first_unlock_at: event.first_unlock_at,
+            created_at: "2026-06-07 08:00:00",
+          }
+        : null;
+    }
+    if (sql.startsWith("SELECT COUNT(*) AS total_messages")) {
+      const messages = this.db.messages.filter((message) => message.recipient_handle === values[0]);
+      return {
+        total_messages: messages.length,
+      };
+    }
+    if (sql.startsWith("SELECT COUNT(*) AS unread_messages")) {
+      const ownerHandle = values[0];
+      const viewerPublicId = values[1];
+      const unread = this.db.messages.filter((message) => {
+        if (message.recipient_handle !== ownerHandle) return false;
+        const read = this.db.messageReads.find(
+          (row) =>
+            row.message_id === message.id &&
+            row.owner_public_id === ownerHandle &&
+            row.viewer_public_id === viewerPublicId &&
+            row.read_at
+        );
+        return !read;
+      }).length;
+      return { unread_messages: unread };
+    }
+    if (sql.startsWith("SELECT id FROM messages WHERE id = ?1 AND recipient_handle = ?2")) {
+      const message = this.db.messages.find((item) => item.id === values[0] && item.recipient_handle === values[1]);
+      return message ? { id: message.id } : null;
+    }
+    if (sql.startsWith("SELECT public_id, nickname, account_role FROM local_accounts") && sql.includes("account_role = 'owner'")) {
+      const account = Array.from(this.db.localAccounts.values()).find(
+        (item) => item.nickname.toLowerCase() === String(values[0]).toLowerCase() && item.account_role === "owner"
+      );
+      return account ? { public_id: account.public_id, nickname: account.nickname, account_role: account.account_role } : null;
+    }
+    if (sql.startsWith("SELECT id FROM owner_viewers")) {
+      const allowed = this.db.ownerViewers.find(
+        (item) =>
+          item.owner_public_id === values[0] &&
+          item.viewer_nickname.toLowerCase() === String(values[1]).toLowerCase()
+      );
+      return allowed ? { id: allowed.id } : null;
+    }
+    if (sql.startsWith("SELECT access_key, access_key_hash, access_key_salt FROM receiver_keys")) {
+      const row = this.db.receiverKeys.get(values[0]);
+      return row || null;
+    }
+    if (sql.startsWith("SELECT nickname FROM local_accounts")) {
+      const account = this.db.localAccounts.get(values[0]);
+      return account ? { nickname: account.nickname } : null;
+    }
+    if (sql.startsWith("SELECT password_salt, password_hash FROM local_accounts")) {
+      const account = this.db.localAccounts.get(values[0]);
+      return account ? { password_salt: account.password_salt, password_hash: account.password_hash } : null;
+    }
+    if (sql.startsWith("SELECT public_id, nickname, password_salt, password_hash FROM local_accounts")) {
+      const account = this.db.localAccounts.get(values[0]);
+      return account || null;
+    }
+    if (sql.startsWith("SELECT public_id, nickname, password_salt, password_hash, account_role FROM local_accounts")) {
+      const account = this.db.localAccounts.get(values[0]);
+      return account || null;
+    }
+    if (sql.startsWith("SELECT id, public_id FROM accounts")) {
+      return Array.from(this.db.accounts.values()).find((account) => account.google_sub === values[0]) || null;
+    }
+    if (sql.startsWith("SELECT id, email, name, picture, public_id FROM accounts")) {
+      return Array.from(this.db.accounts.values()).find((account) => account.google_sub === values[0]) || null;
+    }
+    if (sql.startsWith("SELECT accounts.id")) {
+      const session = this.db.sessions.get(values[0]);
+      if (!session || session.expires_at <= values[1]) return null;
+      return this.db.accounts.get(session.account_id) || null;
+    }
+    throw new Error(`Unhandled first SQL: ${sql}`);
+  }
+
+  async all() {
+    const sql = this.sql;
+    const values = this.values;
+    if (
+      sql.startsWith("SELECT local_date, first_unlock_at FROM unlock_events") &&
+      sql.includes("ORDER BY local_date ASC") &&
+      !sql.includes("BETWEEN")
+    ) {
+      const results = this.db.unlockEvents
+        .filter((event) => event.device_id === values[0])
+        .sort((a, b) => a.local_date.localeCompare(b.local_date))
+        .map((event) => ({ local_date: event.local_date, first_unlock_at: event.first_unlock_at }));
+      return { results };
+    }
+    if (sql.startsWith("SELECT local_date, first_unlock_at FROM unlock_events") && sql.includes("BETWEEN")) {
+      const results = this.db.unlockEvents
+        .filter((event) => event.device_id === values[0] && event.local_date >= values[1] && event.local_date <= values[2])
+        .sort((a, b) => a.local_date.localeCompare(b.local_date))
+        .map((event) => ({ local_date: event.local_date, first_unlock_at: event.first_unlock_at }));
+      return { results };
+    }
+    if (sql.startsWith("SELECT device_id, display_name, guardian_handle FROM users")) {
+      return { results: Array.from(this.db.users.values()) };
+    }
+    if (sql.startsWith("SELECT local_date, first_unlock_at FROM unlock_events") && sql.includes("LIMIT 7")) {
+      const results = this.db.unlockEvents
+        .filter((event) => event.device_id === values[0])
+        .sort((a, b) => b.local_date.localeCompare(a.local_date))
+        .slice(0, 7)
+        .map((event) => ({ local_date: event.local_date, first_unlock_at: event.first_unlock_at }));
+      return { results };
+    }
+    if (sql.startsWith("SELECT device_id, display_name, local_date")) {
+      const results = this.db.unlockEvents
+        .filter((event) => event.guardian_handle === values[0])
+        .sort((a, b) => b.local_date.localeCompare(a.local_date))
+        .slice(0, 30)
+        .map((event) => ({
+          device_id: event.device_id,
+          display_name: event.display_name,
+          local_date: event.local_date,
+          first_unlock_at: event.first_unlock_at,
+          created_at: "2026-06-07 08:00:00",
+        }));
+      return { results };
+    }
+    if (sql.includes("FROM local_accounts") && sql.includes("lower(nickname)")) {
+      const results = Array.from(this.db.localAccounts.values()).filter(
+        (account) => account.nickname.toLowerCase() === String(values[0]).toLowerCase()
+      );
+      return { results };
+    }
+    if (sql.includes("FROM messages m") && sql.includes("message_reads mr")) {
+      const ownerHandle = values[0];
+      const viewerPublicId = values[1];
+      const results = this.db.messages
+        .filter((message) => message.recipient_handle === ownerHandle)
+        .sort((a, b) => b.id - a.id)
+        .slice(0, 100)
+        .map((message) => {
+          const read = this.db.messageReads.find(
+            (row) =>
+              row.message_id === message.id &&
+              row.viewer_public_id === viewerPublicId &&
+              row.owner_public_id === ownerHandle
+          );
+          return {
+            id: message.id,
+            sender_device_id: message.sender_device_id,
+            sender_display_name: message.sender_display_name,
+            type: message.type,
+            title: message.title,
+            body: message.body,
+            created_at: message.created_at,
+            read_at: read?.read_at || null,
+          };
+        });
+      return { results };
+    }
+    if (sql.startsWith("SELECT id, sender_device_id, sender_display_name, type, title, body, created_at FROM messages")) {
+      const results = this.db.messages
+        .filter((message) => message.recipient_handle === values[0])
+        .sort((a, b) => b.id - a.id)
+        .slice(0, 100)
+        .map((message) => ({
+          id: message.id,
+          sender_device_id: message.sender_device_id,
+          sender_display_name: message.sender_display_name,
+          type: message.type,
+          title: message.title,
+          body: message.body,
+          created_at: message.created_at,
+        }));
+      return { results };
+    }
+    if (sql.startsWith("SELECT client_id, title, content, type, memo_date, pinned, done, updated_at FROM memos")) {
+      const results = (this.db.memos || [])
+        .filter((memo) => memo.guardian_handle === values[0])
+        .sort((a, b) => (b.pinned - a.pinned) || (a.done - b.done) || (b.updated_at - a.updated_at))
+        .slice(0, 200)
+        .map((memo) => ({
+          client_id: memo.client_id,
+          title: memo.title,
+          content: memo.content,
+          type: memo.type,
+          memo_date: memo.memo_date,
+          pinned: memo.pinned,
+          done: memo.done,
+          updated_at: memo.updated_at,
+        }));
+      return { results };
+    }
+    if (sql.startsWith("SELECT message_id, viewer_public_id, viewer_nickname, read_at FROM message_reads")) {
+      const results = this.db.messageReads.filter((row) => row.owner_public_id === values[0]);
+      return { results };
+    }
+    if (sql.includes("FROM owner_viewers ov") && sql.includes("local_accounts la")) {
+      const results = this.db.ownerViewers
+        .filter((item) => item.owner_public_id === values[0])
+        .sort((a, b) => a.viewer_nickname.localeCompare(b.viewer_nickname, undefined, { sensitivity: "base" }) || a.id - b.id)
+        .map((item) => {
+          const account = Array.from(this.db.localAccounts.values()).find(
+            (entry) =>
+              entry.account_role === "viewer" &&
+              entry.nickname.toLowerCase() === item.viewer_nickname.toLowerCase()
+          );
+          return {
+            id: item.id,
+            viewer_nickname: item.viewer_nickname,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+            viewer_public_id: account ? account.public_id : null,
+          };
+        });
+      return { results };
+    }
+    if (sql.startsWith("SELECT id, viewer_nickname, created_at, updated_at FROM owner_viewers")) {
+      const results = this.db.ownerViewers
+        .filter((item) => item.owner_public_id === values[0])
+        .sort((a, b) => a.viewer_nickname.localeCompare(b.viewer_nickname, undefined, { sensitivity: "base" }) || a.id - b.id);
+      return { results };
+    }
+    if (sql.startsWith("SELECT id, sender_display_name")) {
+      const results = this.db.messages
+        .filter((message) => message.recipient_handle === values[0])
+        .sort((a, b) => b.id - a.id)
+        .map((message) => ({
+          id: message.id,
+          sender_display_name: message.sender_display_name,
+          type: message.type,
+          title: message.title,
+          body: message.body,
+          read_at: message.read_at,
+          created_at: message.created_at,
+        }));
+      return { results };
+    }
+    throw new Error(`Unhandled all SQL: ${sql}`);
+  }
+}
+

@@ -1,0 +1,42 @@
+<resources>
+    <!-- 深色主题（默认）。父主题保持 Light：系统对话框/时间选择器始终白底深字，
+         白底表面上的文字用 text_on_light 系列，不随主题变化 -->
+    <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/bg_sticky_end</item>
+        <item name="android:navigationBarColor">@color/bg_canvas</item>
+        <item name="android:windowBackground">@drawable/bg_canvas</item>
+        <item name="appCanvasDrawable">@drawable/bg_canvas</item>
+        <item name="appStickyDrawable">@drawable/bg_sticky_header</item>
+        <item name="appBgCard">@color/bg_card</item>
+        <item name="appBgCardElevated">@color/bg_card_elevated</item>
+        <item name="appTextPrimary">@color/text_primary</item>
+        <item name="appTextSecondary">@color/text_secondary</item>
+        <item name="appTextMuted">@color/text_muted</item>
+        <item name="appLine">@color/line</item>
+        <item name="appAccentSoft">@color/accent_soft</item>
+        <item name="appAvatarFill">@color/avatar_fill</item>
+        <item name="appChipUnselected">@color/chip_unselected</item>
+    </style>
+
+    <!-- 浅色主题：主页图标旁的按钮切换 -->
+    <style name="AppTheme.Light">
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">@color/bg_sticky_end_light</item>
+        <item name="android:navigationBarColor">@color/bg_canvas_light_end</item>
+        <item name="android:windowBackground">@drawable/bg_canvas_light</item>
+        <item name="appCanvasDrawable">@drawable/bg_canvas_light</item>
+        <item name="appStickyDrawable">@drawable/bg_sticky_header_light</item>
+        <item name="appBgCard">@color/bg_card_light</item>
+        <item name="appBgCardElevated">@color/bg_card_elevated_light</item>
+        <item name="appTextPrimary">@color/text_primary_light</item>
+        <item name="appTextSecondary">@color/text_secondary_light</item>
+        <item name="appTextMuted">@color/text_muted_light</item>
+        <item name="appLine">@color/line_light</item>
+        <item name="appAccentSoft">@color/accent_soft_light</item>
+        <item name="appAvatarFill">@color/avatar_fill_light</item>
+        <item name="appChipUnselected">@color/chip_unselected_light</item>
+    </style>
+</resources>

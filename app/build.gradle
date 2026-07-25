@@ -1,0 +1,48 @@
+apply plugin: "com.android.application"
+
+// 从 keystore.properties 读取正式签名信息（该文件不要提交到仓库）。
+// 若文件不存在，release 仍可编译但为未签名，需在 Play App Signing 或本地补签。
+def keystorePropsFile = rootProject.file("keystore.properties")
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
+android {
+    namespace "com.jinxin.unlockhub"    // 内部包名，与源码目录 com/jinxin/unlockhub 一致
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.jinxin.unlockhub"  // 对外发布包名（Play 唯一标识，发布后不可改）
+        minSdk 26
+        targetSdk 36
+        versionCode 37
+        versionName "0.8.0"
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile file(keystoreProps["storeFile"])
+                storePassword keystoreProps["storePassword"]
+                keyAlias keystoreProps["keyAlias"]
+                keyPassword keystoreProps["keyPassword"]
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

@@ -1,0 +1,603 @@
+<resources>
+    <string name="app_name">UnlockHub</string>
+    <string name="bound_app_accessibility_desc">仅检测您绑定的常用应用是否被打开，用于在解锁广播失效时补记今日首次解锁。不会读取或记录屏幕内容。</string>
+    <string name="share_subject">UnlockHub 状态查看</string>
+    <string name="share_chooser_title">分享查看方式</string>
+    <string name="hub_subtitle">解锁事件集成中心</string>
+    <string name="module_safeping_title">SafePing</string>
+    <string name="module_safeping_desc">记录每日首次解锁，定时同步给家人</string>
+    <string name="module_memo_title">备忘录</string>
+    <string name="module_memo_desc">日历备忘、清单待办、定时提醒、私密备忘</string>
+    <string name="module_routine_title">自动化</string>
+    <string name="module_routine_desc">设定条件与动作，满足条件时自动执行</string>
+
+    <!-- 通用 -->
+    <string name="common_close">关闭</string>
+    <string name="common_enter_arrow">进入 →</string>
+    <string name="common_on">开</string>
+    <string name="common_off">关</string>
+    <string name="common_allowed">已允许</string>
+    <string name="common_paused">已暂停</string>
+    <string name="common_running">运行中</string>
+
+    <!-- 主界面 -->
+    <string name="main_status_overview">运行概览</string>
+    <string name="main_modules">功能模块</string>
+    <string name="main_crash_log_title">最近一次崩溃日志</string>
+    <string name="main_no_crash">没有崩溃记录。</string>
+    <string name="main_today_not_recorded">今日尚未记录解锁</string>
+    <string name="main_today_recorded">今日已记录首次解锁</string>
+    <string name="main_auto_paused">自动记录已暂停</string>
+    <string name="main_auto_running">自动记录运行中</string>
+    <string name="main_status_line">%1$s · 本机累计 %2$d / %3$d 天\n%4$s · %5$s</string>
+
+    <!-- 设置页 -->
+    <string name="settings_back">返回主页</string>
+    <string name="settings_language">语言 / Language</string>
+    <string name="settings_language_hint">开启为 English（On = English）</string>
+    <string name="settings_header_hint">划掉后台后仍能解锁即记录，需要把下面几项都开好。</string>
+    <string name="settings_auto_record">自动记录</string>
+    <string name="settings_auto_record_desc">关闭后将停止监听解锁与自动上传。</string>
+    <string name="settings_pause_label">暂停自动记录</string>
+    <string name="settings_realtime_label">实时监控（解锁即时记录）</string>
+    <string name="settings_realtime_hint">开启：常驻后台，解锁那一刻即时记录并确认、解锁弹窗即时弹出（会有一条常驻通知）。关闭：仅在启用解锁弹窗/自动化等实时功能时才常驻；纯签到记录改由后台定时回查补记，无常驻通知但可能延迟十几分钟。</string>
+    <string name="settings_unlockpopup_label">解锁后弹窗确认「已记录」</string>
+    <string name="settings_unlockpopup_hint">开启后，每日首次解锁记录成功时整页弹窗确认，让你稳定看到记录状态。</string>
+    <string name="settings_test_popup">测试解锁弹窗（立即模拟一次解锁）</string>
+    <string name="settings_test_toast">待弹备忘 %1$d 条 · 通知%2$s</string>
+    <string name="settings_perms_title">必开权限（解锁即记录）</string>
+    <string name="settings_perms_desc">按顺序检查：① 通知 ② 自启动 ③ 后台无限制 ④ 允许后台活动。 设置完成后尽量不要从多任务划掉本应用，或在多任务里锁定本应用卡片。</string>
+    <string name="settings_perm_1">1. 允许通知</string>
+    <string name="settings_perm_2">2. 重要提醒（弹窗、声音）</string>
+    <string name="settings_perm_3">3. 自启动（手机管家）</string>
+    <string name="settings_perm_4">4. 后台无限制 / 省电白名单</string>
+    <string name="settings_perm_5">5. 允许后台活动</string>
+    <string name="settings_perm_6">6. 应用详情（找不到上面页面时）</string>
+    <string name="settings_send_test_notify">发送测试通知</string>
+    <string name="settings_test_notify_sent">已发送测试通知</string>
+    <string name="settings_boundapp_title">绑定应用兜底</string>
+    <string name="settings_boundapp_desc">点「管理绑定应用」搜索本机全部应用并多选绑定。 划掉 SafePing 后台后，打开任一绑定应用时会自动补记今日首次解锁。</string>
+    <string name="settings_manage_boundapps">管理绑定应用</string>
+    <string name="settings_account">账号</string>
+    <string name="settings_profile_password">个人资料与密码</string>
+    <string name="settings_cannot_open">无法打开系统设置，请从系统设置中手动找到 SafePing</string>
+    <string name="settings_paused_done">自动记录已暂停。</string>
+    <string name="settings_resumed_done">自动记录已恢复。</string>
+    <string name="settings_status_notif_perm">通知权限：</string>
+    <string name="settings_notif_not_allowed">未允许（必开）</string>
+    <string name="settings_status_autorecord">自动记录：</string>
+
+    <!-- 解锁弹窗 -->
+    <string name="popup_default_title">提醒</string>
+    <string name="popup_tap_hint">点击上方内容可打开这条备忘（打开即标记为已读）</string>
+    <string name="popup_got_it">我知道了</string>
+    <string name="popup_keep_unread_exit">未读且退出应用程序</string>
+
+    <!-- 通用（补充） -->
+    <string name="common_delete">删除</string>
+    <string name="common_cancel">取消</string>
+    <string name="common_ok">确定</string>
+    <string name="common_next">下一步</string>
+    <string name="common_save">保存</string>
+    <string name="common_saved">已保存</string>
+    <string name="common_clear">清除</string>
+
+    <!-- 备忘编辑 -->
+    <string name="memoedit_title_new">新建备忘</string>
+    <string name="memoedit_title_edit">编辑备忘</string>
+    <string name="memoedit_private_title">私密备忘</string>
+    <string name="memoedit_private_msg">这条备忘是私密的，需要输入 PIN 查看。</string>
+    <string name="memoedit_label_title">标题</string>
+    <string name="memoedit_hint_title">备忘标题</string>
+    <string name="memoedit_label_type">类型</string>
+    <string name="memoedit_type_text">文本</string>
+    <string name="memoedit_type_checklist">清单 / 待办</string>
+    <string name="memoedit_label_content">内容</string>
+    <string name="memoedit_hint_content">写点什么…</string>
+    <string name="memoedit_label_checklist">清单事项</string>
+    <string name="memoedit_add_item">＋ 添加一项</string>
+    <string name="memoedit_hint_item">事项内容</string>
+    <string name="memoedit_label_date">日历日期（在日历视图中显示）</string>
+    <string name="memoedit_no_date">不关联日期（点击选择）</string>
+    <string name="memoedit_label_remind">定时提醒（只选时间，日期用上面的日历日期；未设则今天）</string>
+    <string name="memoedit_no_remind">不提醒（点击设置）</string>
+    <string name="memoedit_clear_remind">清除提醒</string>
+    <string name="memoedit_time_past">该日期的这个时间已过，请改日历日期或时间</string>
+    <string name="memoedit_unlockpopup_title">🔔 解锁-弹窗加强提醒</string>
+    <string name="memoedit_uphint_off">开启后以整页弹窗提醒（锁屏也能弹出），大幅提高被看到的概率。弹窗排在「状态已记录」通知之后。</string>
+    <string name="memoedit_uphint_time">当前设置了提醒时间：到点整页弹窗，且到点之后每次解锁都弹，直到你查看它。</string>
+    <string name="memoedit_uphint_date">当前只关联了日期：从 %1$s 起，每次解锁都弹，直到你查看它。</string>
+    <string name="memoedit_uphint_none">未设置时间：每次解锁都弹，直到你查看它（开启后本条自动设为未读）。</string>
+    <string name="memoedit_uphint_suffix">\n弹窗顺序排在「状态已记录」通知之后。</string>
+    <string name="memoedit_flag_pinned">置顶</string>
+    <string name="memoedit_flag_unread">标为未读（应用图标显示角标）</string>
+    <string name="memoedit_flag_private">私密（需要 PIN 查看）</string>
+    <string name="memoedit_delete">删除这条备忘</string>
+    <string name="memoedit_empty_save">写点内容再保存吧</string>
+    <string name="memoedit_private_need_pin">请先在备忘录首页点「私密区」设置 PIN</string>
+    <string name="memoedit_alarm_title">提醒可能不准时</string>
+    <string name="memoedit_alarm_msg">系统未授权「闹钟和提醒」权限，提醒会被延迟（省电模式下可能推迟很久）。建议开启以保证准点提醒。</string>
+    <string name="memoedit_alarm_go">去开启</string>
+    <string name="memoedit_alarm_later">暂不</string>
+
+    <!-- SafePing -->
+    <string name="sp_back">← 返回</string>
+    <string name="sp_subtitle">解锁记录与同步</string>
+    <string name="sp_settings">设置</string>
+    <string name="sp_today_status">今日状态</string>
+    <string name="sp_share_title">分享给家人</string>
+    <string name="sp_share_desc">把查询页链接发给家人。对方需在网页注册/登录查看账号，并在你手机端加入其昵称后才能查看。</string>
+    <string name="sp_copy_uid">复制我的 UID</string>
+    <string name="sp_copied_uid">UID 已复制</string>
+    <string name="sp_copy_link">复制查询页链接</string>
+    <string name="sp_copied_link">查询页链接已复制（已带上 UID）</string>
+    <string name="sp_copy_guide">复制完整查看说明</string>
+    <string name="sp_copied_guide">查看说明已复制，可粘贴到微信等</string>
+    <string name="sp_share_other">分享到其他应用</string>
+    <string name="sp_open_browser">在浏览器打开查询页</string>
+    <string name="sp_viewers_title">查看人已读/未读</string>
+    <string name="sp_viewers_desc">添加家人在网页注册时使用的昵称。同步后这里会显示谁已读、谁未读。</string>
+    <string name="sp_manage_viewers">管理查看人昵称</string>
+    <string name="sp_loading_read">正在加载已读状态...</string>
+    <string name="sp_local_records">本机记录</string>
+    <string name="sp_days_fmt">%1$d / %2$d 天</string>
+    <string name="sp_sync_settings">同步设置</string>
+    <string name="sp_sync_desc">解锁后立即上传云端；到同步日时，云端会从数据库组合消息显示在查询页。</string>
+    <string name="sp_mode_weekday">按星期同步（选择周一到周日）</string>
+    <string name="sp_mode_interval">按天数同步（起始日 + 间隔）</string>
+    <string name="sp_sync_days">同步日（可多选）</string>
+    <string name="sp_weekday_hint">同步日会从云端取近 7 天记录组成查询消息；不足 7 天则发送全部记录。</string>
+    <string name="sp_anchor_label">起始同步日</string>
+    <string name="sp_pick_anchor">选择起始日期</string>
+    <string name="sp_interval_label">同步间隔</string>
+    <string name="sp_custom_interval">自定义间隔（1-180 天）</string>
+    <string name="sp_interval_hint">到同步日会从云端取间隔期内的记录；不足则发送该时段内全部记录。</string>
+    <string name="sp_save_sync">保存同步设置</string>
+    <string name="sp_recent_sync">最近同步</string>
+    <string name="sp_need_one_day">请至少选择一个同步日</string>
+    <string name="sp_invalid_interval">请输入有效的同步间隔</string>
+    <string name="sp_interval_range">同步间隔需在 1-%1$d 天之间</string>
+    <string name="sp_sync_saved">同步设置已保存</string>
+    <string name="sp_anchor_btn">起始同步日：%1$s</string>
+    <string name="sp_today_first_none">今天首次解锁：暂无</string>
+    <string name="sp_today_first_at">今天首次解锁：%1$s</string>
+    <string name="sp_next_msg">下次查询消息：%1$s</string>
+    <string name="sp_last_unlock_none">最近一次解锁：暂无</string>
+    <string name="sp_last_unlock_at">最近一次解锁：%1$s</string>
+    <string name="sp_week_recorded">本周已记录：%1$d 天\n</string>
+    <string name="sp_uploaded">已上传云端：%1$d 天</string>
+    <string name="sp_pending_upload"> · 待上传：%1$d 天</string>
+    <string name="sp_sync_way">\n同步方式：</string>
+    <string name="sp_by_weekday">按星期（%1$s）</string>
+    <string name="sp_by_interval">按天数（起始 %1$s，每 %2$d 天）</string>
+    <string name="sp_last_sync_error">\n上次同步提示：%1$s</string>
+    <string name="sp_read_need_account">注册并同步后，可在此查看各位家人的已读/未读。</string>
+    <string name="sp_read_load_fail">暂时无法加载已读状态：%1$s</string>
+    <string name="sp_no_sync_msg">还没有同步消息。到同步日首次解锁且联网后会生成查询页消息。</string>
+    <string name="sp_msg_default">消息</string>
+    <string name="sp_no_viewers">：尚未配置查看人\n</string>
+    <string name="sp_unknown">未知</string>
+    <string name="sp_read">：已读</string>
+    <string name="sp_unread">：未读</string>
+    <string name="sp_no_history_pending">还没有查询消息记录。本机待上传 %1$d 天。</string>
+    <string name="sp_no_history">还没有查询消息记录。解锁后会立即上传，到同步日会生成查询页消息。</string>
+    <string name="sp_generated">已生成 %1$s 的查询消息</string>
+    <string name="sp_pending_line">\n待上传：%1$d 天</string>
+    <!-- 自动化：条件/动作描述 -->
+    <string name="rt_trig_time">到达 %1$s:%2$s%3$s</string>
+    <string name="rt_trig_charger_on">插入充电器</string>
+    <string name="rt_trig_charger_off">拔出充电器</string>
+    <string name="rt_trig_battery_low">电量低</string>
+    <string name="rt_trig_first_unlock">当日首次解锁</string>
+    <string name="rt_trig_any_unlock">每次解锁</string>
+    <string name="rt_trig_app_open">打开「%1$s」</string>
+    <string name="rt_trig_wifi_any">连接到任意 Wi-Fi</string>
+    <string name="rt_trig_wifi">连接到 Wi-Fi「%1$s」</string>
+    <string name="rt_trig_bt_any">连接到任意蓝牙设备</string>
+    <string name="rt_trig_bt">连接到蓝牙「%1$s」</string>
+    <string name="rt_trig_place">到达「%1$s」附近</string>
+    <string name="rt_default_app">应用</string>
+    <string name="rt_default_place">指定地点</string>
+    <string name="rt_con_time_range">，且在 %1$s:%2$s–%3$s:%4$s 之间</string>
+    <string name="rt_con_charging">，且正在充电</string>
+    <string name="rt_con_not_charging">，且未充电</string>
+    <string name="rt_con_wifi_any">，且已连接 Wi-Fi</string>
+    <string name="rt_con_wifi">，且已连接 Wi-Fi「%1$s」</string>
+    <string name="rt_con_bt_any">，且已连接蓝牙设备</string>
+    <string name="rt_con_bt">，且已连接蓝牙「%1$s」</string>
+    <string name="rt_con_place">，且在「%1$s」附近</string>
+    <string name="rt_act_popup">弹窗提醒：%1$s</string>
+    <string name="rt_act_notify">弹通知：%1$s</string>
+    <string name="rt_act_memo">激活备忘「%1$s」</string>
+    <string name="rt_act_open_app">打开「%1$s」</string>
+    <string name="rt_act_dnd_on">开启免打扰</string>
+    <string name="rt_act_dnd_off">关闭免打扰</string>
+    <string name="rt_act_countdown">启用倒计时 %1$d 分钟</string>
+    <string name="rt_weekdays_all">（每天）</string>
+    <string name="rt_weekdays_prefix">（周</string>
+    <string name="rt_weekdays_suffix">）</string>
+    <string name="rt_if">如果：%1$s</string>
+    <string name="rt_then">那么：%1$s</string>
+    <string name="rts_header">自动化 · 条件触发动作</string>
+    <string name="rts_add">＋ 新建规则</string>
+    <string name="rts_tips_title">说明</string>
+    <string name="rts_tips">· 「应用启动」条件需要开启使用情况访问权限\n· 「免打扰切换」需要在系统设置授予勿扰权限\n· 「打开应用」在后台受系统限制时会改为发一条可点击的通知\n· 「到达指定地点」需要定位权限，后台触发建议设为「始终允许」\n· 充电/电量条件在应用进程存活时生效，建议把 UnlockHub 加入电池优化白名单</string>
+    <string name="rts_empty">还没有规则。规则 = 条件（最多两个）+ 动作。</string>
+    <string name="rts_count">共 %1$d 条规则 · %2$d 条已启用</string>
+    <string name="rts_unnamed">未命名规则</string>
+    <string name="rts_delete_title">删除规则</string>
+    <string name="rts_delete_msg">确定删除「%1$s」吗？</string>
+
+    <!-- 注册/登录 -->
+    <string name="reg_header">注册只需昵称和密码，系统会自动生成 UID。</string>
+    <string name="reg_title">注册新账号</string>
+    <string name="reg_hint_nickname">例如：Alex</string>
+    <string name="reg_hint_password">至少 6 位</string>
+    <string name="reg_label_backend">后端地址</string>
+    <string name="reg_label_nickname">昵称（仅用于显示）</string>
+    <string name="reg_label_password">密码</string>
+    <string name="reg_button">注册并进入</string>
+    <string name="reg_login_title">登录已有账号</string>
+    <string name="reg_label_nickname2">昵称</string>
+    <string name="reg_login_button">使用昵称 + 密码登录</string>
+    <string name="reg_invalid">昵称不能为空，密码至少 6 位。</string>
+    <string name="reg_done">注册完成。UID：%1$s（查看说明已复制到剪贴板）</string>
+    <string name="reg_fail">注册失败: %1$s</string>
+    <string name="reg_need_both">请输入昵称和密码。</string>
+    <string name="reg_login_fail">登录失败: %1$s</string>
+
+    <!-- 个人资料 -->
+    <string name="pf_back">返回主页</string>
+    <string name="pf_header">管理账号、密码与分享方式。</string>
+    <string name="pf_reset_pw">重设密码</string>
+    <string name="pf_cur_pw">当前密码</string>
+    <string name="pf_new_pw_hint">新密码（至少 6 位）</string>
+    <string name="pf_confirm_pw">确认新密码</string>
+    <string name="pf_new_pw">新密码</string>
+    <string name="pf_save_pw">保存新密码</string>
+    <string name="pf_quick">快捷操作</string>
+    <string name="pf_copy_uid">复制 UID</string>
+    <string name="pf_copied_uid">UID 已复制</string>
+    <string name="pf_copy_link">复制状态页链接</string>
+    <string name="pf_copied_link">状态页链接已复制</string>
+    <string name="pf_copy_guide">复制完整查看说明</string>
+    <string name="pf_copied_guide">查看说明已复制</string>
+    <string name="pf_share">分享到其他应用</string>
+    <string name="pf_open_web">在浏览器打开状态页</string>
+    <string name="pf_app_settings">应用设置</string>
+    <string name="pf_app_settings_desc">通知、电池优化、精确闹钟等系统权限可在此一键跳转配置。</string>
+    <string name="pf_open_settings">打开应用设置</string>
+    <string name="pf_logout">退出登录</string>
+    <string name="pf_pw_invalid">请填写当前密码，新密码至少 6 位。</string>
+    <string name="pf_pw_mismatch">两次输入的新密码不一致。</string>
+    <string name="pf_pw_updated">密码已更新。手机端和网页端查看将使用新密码。</string>
+    <string name="pf_pw_fail">修改失败: %1$s</string>
+
+    <!-- 查看人 -->
+    <string name="vw_header">添加家人在网页注册时使用的昵称。家人找回 UID 后，可在这里看到并复制分享。</string>
+    <string name="vw_title">查看人昵称名单</string>
+    <string name="vw_desc">请与对方确认网页注册昵称完全一致（如「妈妈」「爸爸」）。</string>
+    <string name="vw_add">添加昵称</string>
+    <string name="vw_load_fail">加载失败: %1$s</string>
+    <string name="vw_empty">还没有添加查看人。家人需先在网页注册，再把他们的昵称加到这里。</string>
+    <string name="vw_uid_none">UID：尚未注册</string>
+    <string name="vw_more">更多操作</string>
+    <string name="vw_copy_uid">复制 UID</string>
+    <string name="vw_edit">编辑</string>
+    <string name="vw_uid_label">SafePing 查看人 UID</string>
+    <string name="vw_uid_copied">UID 已复制</string>
+    <string name="vw_hint_nickname">例如：妈妈</string>
+    <string name="vw_add_title">添加查看人昵称</string>
+    <string name="vw_edit_title">编辑查看人昵称</string>
+    <string name="vw_empty_nickname">昵称不能为空</string>
+    <string name="vw_saved">已保存</string>
+    <string name="vw_save_fail">保存失败: %1$s</string>
+    <string name="vw_del_title">删除「%1$s」？</string>
+    <string name="vw_del_msg">删除后该昵称将无法查看你的状态，直到重新添加。</string>
+    <string name="vw_deleted">已删除</string>
+    <string name="vw_del_fail">删除失败: %1$s</string>
+
+    <!-- 绑定应用 -->
+    <string name="ba_back">返回设置</string>
+    <string name="ba_header">像选桌面应用一样点图标多选。这里列出本机所有能点图标打开的应用（如抖音、微信）。</string>
+    <string name="ba_title">绑定应用</string>
+    <string name="ba_search">搜索应用名称</string>
+    <string name="ba_select_visible">全选当前结果</string>
+    <string name="ba_clear_visible">取消当前结果</string>
+    <string name="ba_no_match">没有匹配的应用。请换个关键词试试。</string>
+    <string name="ba_selected">已选</string>
+    <string name="ba_summary">已绑定 %1$d 个 · 当前显示 %2$d 个 · 本机共 %3$d 个可打开应用</string>
+    <string name="ba_note">\n说明：点图标选择绑定应用。划掉 SafePing 后台后，打开任一绑定应用时会自动补记今日首次解锁。</string>
+
+    <!-- 通知渠道与通知文案 -->
+    <string name="ch_memo_reminder">备忘录提醒</string>
+    <string name="ch_memo_reminder_desc">备忘录到达提醒时间时通知。</string>
+    <string name="ch_memo_badge">备忘录未读角标</string>
+    <string name="ch_memo_badge_desc">有未读备忘时在应用图标上显示角标。</string>
+    <string name="ch_quick_add">快速添加备忘</string>
+    <string name="ch_quick_add_desc">在通知栏常驻一个入口，点一下就能新建备忘。</string>
+    <string name="nt_quick_add_title">＋ 快速添加备忘</string>
+    <string name="nt_quick_add_text">点这里立即新建一条备忘</string>
+    <string name="nt_private_memo_title">🔒 私密备忘提醒</string>
+    <string name="nt_private_memo_text">你有一条私密备忘待处理，点开查看。</string>
+    <string name="nt_memo_reminder">备忘提醒</string>
+    <string name="nt_no_content">（无内容）</string>
+    <string name="nt_private_due">你有一条私密备忘到达提醒时间</string>
+    <string name="ch_urgent">UnlockHub 重要提醒</string>
+    <string name="ch_urgent_desc">每日首次解锁与同步成功时弹出提醒，可在通知栏中查看。</string>
+    <string name="nt_recorded_title">UnlockHub 已记录状态</string>
+    <string name="nt_recorded_text">已记录 %1$s 的首次解锁，本机累计 %2$d 天</string>
+    <string name="nt_sync_ok_title">UnlockHub 同步成功</string>
+    <string name="nt_sync_ok_text">已上传 %1$s 的记录</string>
+    <string name="nt_test_title">UnlockHub 测试通知</string>
+    <string name="nt_test_text">通知工作正常，可在通知栏中查看。</string>
+    <string name="ch_popup">解锁弹窗提醒</string>
+    <string name="ch_popup_desc">以整页弹窗方式展示的重要提醒。</string>
+    <string name="ch_fgs">后台守护</string>
+    <string name="ch_fgs_desc">保持每日签到记录与自动化在后台可靠运行的常驻通知。</string>
+    <string name="nt_fgs_title">UnlockHub 正在后台运行</string>
+    <string name="nt_fgs_text">维持应用启动自动化与解锁提醒实时运行</string>
+    <string name="nt_capture_title">UnlockHub 已记录</string>
+    <string name="nt_capture_text">已记录 %1$s 的首次解锁状态，将按同步计划上传。</string>
+
+    <!-- 同步计划 -->
+    <string name="sy_days">%1$d 天</string>
+    <string name="sy_less_day">不足 1 天</string>
+    <string name="sy_today">今天</string>
+    <string name="sy_wait_net">已到同步日，等待联网</string>
+    <string name="sy_wait_unlock">已到同步日，等待今日首次解锁</string>
+    <string name="sy_wait_upload">已到同步日，待上传 %1$d 天记录</string>
+    <string name="sy_wait_gen">已到同步日，等待生成查询消息</string>
+    <string name="sy_next">%1$s（还有 %2$s）</string>
+    <string name="sy_none">未选择</string>
+    <string-array name="sy_weekdays">
+        <item>周一</item>
+        <item>周二</item>
+        <item>周三</item>
+        <item>周四</item>
+        <item>周五</item>
+        <item>周六</item>
+        <item>周日</item>
+    </string-array>
+
+    <!-- 电池优化状态 -->
+    <string name="bo_na">电池优化：本机无需设置</string>
+    <string name="bo_off">系统电池优化：已关闭（无限制，推荐）</string>
+    <string name="bo_on">系统电池优化：仍开启（建议点上方按钮关闭）</string>
+    <string name="bo_note">说明：此处只检测 Android 系统自带的「电池优化」开关。若你已在手机管家/省电里设为「无限制」或「允许后台」，但这里仍显示「仍开启」，可忽略此行，以手机管家里的设置为准。</string>
+
+    <!-- 分享说明 -->
+    <string name="sh_guide">【UnlockHub 查看我的状态】\n我的昵称：%1$s\n我的 UID：%2$s\n查询页链接：%3$s\n\n步骤：\n1. 打开上方链接（会自动填入我的 UID）\n2. 在网页注册查看账号（昵称+密码），登录时使用 UID+密码\n3. 告诉我你注册时用的昵称，我会在手机端把你加入查看名单，并复制你的 UID 给你\n4. 忘记 UID 可在登录页点「忘记 UID？」，填写你的昵称、我的昵称和密码找回\n5. 登录后即可查看我的同步状态，已读/未读会按你的昵称单独记录</string>
+
+    <!-- 时间格式 -->
+    <string name="tf_datetime_pattern">M月d日 HH:mm</string>
+    <string name="tf_to">至</string>
+    <string name="tf_d_h">%1$d 天 %2$d 小时</string>
+    <string name="tf_h">%1$d 小时</string>
+    <string name="tf_m">%1$d 分钟</string>
+
+    <!-- 自动化执行 -->
+    <string name="re_triggered">自动化规则已触发</string>
+    <string name="re_app">应用</string>
+    <string name="re_memo_title">备忘提醒</string>
+    <string name="re_memo_text">自动化规则激活了一条备忘，请查看。</string>
+    <string name="re_open_fail_title">无法打开应用</string>
+    <string name="re_open_fail_text">「%1$s」可能已被卸载。</string>
+    <string name="re_dnd_fail_title">免打扰切换失败</string>
+    <string name="re_dnd_fail_text">请在系统设置中授予 UnlockHub「勿扰权限」：设置 &gt; 通知 &gt; 勿扰权限。</string>
+    <string name="re_reminder">提醒</string>
+    <string name="re_countdown">倒计时</string>
+    <string name="re_countdown_title">%1$s · %2$d 分钟结束</string>
+    <string name="re_countdown_started">倒计时已开始</string>
+    <string name="re_countdown_text">%1$d 分钟后提醒你%2$s</string>
+    <string name="re_auto_reminder">自动化提醒</string>
+    <string name="re_automation">自动化</string>
+    <string name="re_tap_open">点按打开「%1$s」</string>
+    <string name="ch_routine">自动化规则</string>
+    <string name="ch_routine_desc">条件满足时执行的自动化动作通知。</string>
+
+    <!-- 规则编辑 -->
+    <string name="red_title_new">新建规则</string>
+    <string name="red_title_edit">编辑规则</string>
+    <string name="red_name">规则名称</string>
+    <string name="red_name_hint">例如：到家提醒</string>
+    <string name="red_cond1">条件一 · 触发事件</string>
+    <string name="red_pick_trigger">选择触发事件</string>
+    <string name="red_cond2">条件二 · 附加约束</string>
+    <string name="red_pick_constraint">选择附加约束</string>
+    <string name="red_action">动作</string>
+    <string name="red_pick_action">选择动作</string>
+    <string name="red_save">保存规则</string>
+    <string name="red_delete">删除这条规则</string>
+    <string name="red_g_time">时间</string>
+    <string name="red_g_unlock">解锁与使用</string>
+    <string name="red_g_power">电源</string>
+    <string name="red_g_conn">连接</string>
+    <string name="red_g_place">位置</string>
+    <string name="red_t_time">定时（每天/每周）</string>
+    <string name="red_t_first_unlock">当日首次解锁</string>
+    <string name="red_t_any_unlock">每次解锁</string>
+    <string name="red_t_app_open">应用启动</string>
+    <string name="red_t_charger_on">插入充电器</string>
+    <string name="red_t_charger_off">拔出充电器</string>
+    <string name="red_t_battery_low">电量低</string>
+    <string name="red_t_wifi">连接到 Wi-Fi</string>
+    <string name="red_t_bt">连接到蓝牙设备</string>
+    <string name="red_t_place">到达指定地点</string>
+    <string name="red_c_time_range">在某时间段内（可跨天）</string>
+    <string name="red_c_charging">正在充电</string>
+    <string name="red_c_not_charging">未在充电</string>
+    <string name="red_c_wifi">已连接指定 Wi-Fi</string>
+    <string name="red_c_bt">已连接指定蓝牙</string>
+    <string name="red_c_place">在指定地点附近</string>
+    <string name="red_a_popup">弹窗提醒</string>
+    <string name="red_a_countdown">启用倒计时</string>
+    <string name="red_a_memo">激活备忘（标未读+角标）</string>
+    <string name="red_a_open_app">打开应用</string>
+    <string name="red_a_dnd_on">开启免打扰</string>
+    <string name="red_a_dnd_off">关闭免打扰</string>
+    <string name="red_time_at">时间：%1$s:%2$s</string>
+    <string name="red_repeat">重复（点选星期）</string>
+    <string name="red_pick_watch_app">选择要监听的应用</string>
+    <string name="red_app_is">应用：%1$s</string>
+    <string name="red_hint_usage">需开启「使用情况访问权限」检测应用启动；如需自动跳转（而非仅通知），再开启「显示在其他应用上层」。</string>
+    <string name="red_wifi_label">Wi-Fi 名称（留空 = 任意 Wi-Fi）</string>
+    <string name="red_wifi_hint">例如：Home-5G</string>
+    <string name="red_fill_wifi">填入当前连接的 Wi-Fi</string>
+    <string name="red_hint_wifi">识别具体 Wi-Fi 名称需要定位权限且系统定位开启。</string>
+    <string name="red_bt_label">蓝牙设备名（留空 = 任意设备）</string>
+    <string name="red_bt_hint">例如：车载蓝牙 / 耳机名称</string>
+    <string name="red_bt_hint2">例如：车载蓝牙</string>
+    <string name="red_pick_paired">从已配对设备中选择</string>
+    <string name="red_hint_bt">读取设备名需要「附近设备（蓝牙）」权限。</string>
+    <string name="red_hint_place">需要定位权限；要在后台/锁屏时触发，请在系统设置中把本应用定位权限设为「始终允许」。</string>
+    <string name="red_hint_battery">跟随系统低电量事件（一般为 20%% 或 15%%）。</string>
+    <string name="red_hint_first_unlock">每天第一次解锁手机时触发，配合「弹窗提醒」= 解锁必见。</string>
+    <string name="red_hint_any_unlock">每次解锁手机都触发（60 秒内的重复解锁会合并，避免重复打扰）。</string>
+    <string name="red_from">从 %1$s:%2$s</string>
+    <string name="red_to">到 %1$s:%2$s（可跨天）</string>
+    <string name="red_hint_place_con">触发时会检查最近的已知位置是否在该地点半径内。</string>
+    <string name="red_place_name">地点名称</string>
+    <string name="red_place_hint">例如：家 / 公司 / 健身房</string>
+    <string name="red_place_saved">已记录位置（%1$.4f, %2$.4f）· 点击重新记录</string>
+    <string name="red_place_record">记录当前位置为该地点</string>
+    <string name="red_radius">半径（米，100–5000）</string>
+    <string name="red_radius_hint">默认 300</string>
+    <string name="red_minutes">倒计时时长（分钟）</string>
+    <string name="red_minutes_hint">例如：25</string>
+    <string name="red_end_text">结束提示语（可选）</string>
+    <string name="red_end_hint">例如：该收心了</string>
+    <string name="red_hint_countdown">条件满足时开始计时，结束时整页弹窗提醒。例：打开某应用 → 倒计时 30 分钟。</string>
+    <string name="red_popup_content">弹窗内容</string>
+    <string name="red_notify_content">通知内容</string>
+    <string name="red_text_hint">要显示的文字</string>
+    <string name="red_hint_popup">亮屏使用中弹横幅，锁屏/刚解锁时整页弹出，看到的概率远高于普通通知。</string>
+    <string name="red_memo_is">备忘：%1$s</string>
+    <string name="red_pick_memo">选择要激活的备忘</string>
+    <string name="red_pick_open_app">选择要打开的应用</string>
+    <string name="red_hint_dnd">需要系统「勿扰权限」，保存时会检测并引导开启。</string>
+    <string name="red_pick_app_title">选择应用</string>
+    <string name="red_no_memo">还没有备忘，请先在备忘录里创建</string>
+    <string name="red_pick_memo_title">选择备忘</string>
+    <string name="red_need_loc_retry">请先授予定位权限，然后再点一次</string>
+    <string name="red_no_loc">本机不支持定位</string>
+    <string name="red_getting_loc">正在获取当前位置…</string>
+    <string name="red_no_loc_perm">缺少定位权限</string>
+    <string name="red_loc_fail">获取位置失败，请确认系统定位已开启</string>
+    <string name="red_loc_fail2">未能获取位置，请确认系统定位已开启</string>
+    <string name="red_loc_saved">已记录当前位置</string>
+    <string name="red_wifi_need_loc">读取 Wi-Fi 名称需要定位权限，授予后再点一次</string>
+    <string name="red_wifi_fail">未能读取当前 Wi-Fi（需已连接 Wi-Fi 且系统定位开启）</string>
+    <string name="red_bt_need_perm">读取配对设备需要「附近设备」权限，授予后再点一次</string>
+    <string name="red_no_bt">本机不支持蓝牙</string>
+    <string name="red_no_paired">没有已配对的蓝牙设备</string>
+    <string name="red_pick_paired_title">选择已配对设备</string>
+    <string name="red_no_bt_perm">缺少「附近设备」权限</string>
+    <string name="red_need_trigger">请先选择条件一（触发事件）</string>
+    <string name="red_need_action">请选择要执行的动作</string>
+    <string name="red_need_constraint">条件二已开启，请选择一个约束（或关掉开关）</string>
+    <string name="red_need_watch_app">请选择要监听的应用</string>
+    <string name="red_need_place">请先点击「记录当前位置为该地点」</string>
+    <string name="red_need_minutes">请输入 1-1440 之间的分钟数</string>
+    <string name="red_need_text">请填写内容</string>
+    <string name="red_need_memo">请选择要激活的备忘</string>
+    <string name="red_need_open_app">请选择要打开的应用</string>
+    <string name="red_save_fail">保存失败：%1$s</string>
+    <string name="red_saved">规则已保存</string>
+    <string name="red_dnd_title">需要勿扰权限</string>
+    <string name="red_dnd_msg">免打扰切换需要系统「勿扰权限」。现在去开启吗？</string>
+    <string name="red_go_enable">去开启</string>
+    <string name="red_later">稍后</string>
+    <string name="red_usage_title">需要使用情况访问权限</string>
+    <string name="red_usage_msg">「应用启动」条件需要「使用情况访问权限」来检测你打开了哪个应用。现在去开启吗？</string>
+
+    <!-- 系统设置跳转 -->
+    <string name="oem_autostart">自启动</string>
+    <string name="oem_unrestricted">后台无限制</string>
+    <string name="oem_bg_activity">后台活动</string>
+    <string name="oem_no_autostart">未找到自启动页面，请在应用详情中手动开启自启动。</string>
+    <string name="oem_no_battery">未找到省电页面，请在应用详情里把电池设为「无限制 / 不优化」。</string>
+    <string name="oem_no_bg">未找到后台活动页面，请在应用详情中开启「允许后台活动 / 手动启动」。</string>
+    <string name="oem_hint_xiaomi">请在列表中找到 SafePing，开启自启动，并把省电策略设为「无限制」。</string>
+    <string name="oem_hint_huawei">请找到 SafePing，开启「自动启动 / 允许后台活动 / 手动启动」。</string>
+    <string name="oem_hint_oppo">请找到 SafePing，允许自启动与后台运行。</string>
+    <string name="oem_hint_vivo">请找到 SafePing，允许自启动与后台高耗电。</string>
+    <string name="oem_hint_samsung">请找到 SafePing，关闭省电限制并允许后台使用。</string>
+    <string name="oem_hint_generic">请在列表中找到 SafePing 并开启相关权限。</string>
+    <string name="oem_opened">已打开「%1$s」设置。</string>
+    <string name="oem_open_fail">未能打开「%1$s」页面。</string>
+
+    <!-- 其他 -->
+    <string name="ui_toggle_theme">切换深浅主题</string>
+    <string name="ui_settings">设置</string>
+    <string name="ui_profile">个人资料</string>
+    <string name="memo_empty_checklist">（空清单）</string>
+    <string name="memo_checklist_done">%1$d/%2$d 已完成\n%3$s</string>
+    <string name="api_need_login">请先注册或登录账号</string>
+    <string name="api_no_uid">注册/登录响应缺少 UID</string>
+    <string name="cd_finished_title">倒计时结束</string>
+    <string name="cd_finished_text">设定的倒计时已结束。</string>
+    <string name="ba_none">绑定应用：尚未选择</string>
+    <string name="ba_count">绑定应用：已选 %1$d 个</string>
+    <string name="sync_no_network">当前无网络，联网后将自动同步</string>
+
+    <string-array name="sp_intervals">
+        <item>每 1 天</item>
+        <item>每 2 天</item>
+        <item>每 3 天</item>
+        <item>每 7 天</item>
+        <item>每 15 天</item>
+        <item>每 30 天</item>
+        <item>自定义</item>
+    </string-array>
+
+    <!-- 备忘录 -->
+    <string name="memo_tab_list">列表</string>
+    <string name="memo_tab_calendar">日历</string>
+    <string name="memo_tab_private">私密区</string>
+    <string name="memo_quickadd_label">通知栏快捷新建备忘（常驻一条通知，点它直接新建）</string>
+    <string name="memo_add">＋ 新建备忘</string>
+    <string name="memo_date_count">%1$s · %2$d 条备忘</string>
+    <string name="memo_calendar_hint">点选日期查看当天备忘；下方为全部备忘。</string>
+    <string name="memo_count_total">共 %1$d 条</string>
+    <string name="memo_count_unread"> · %1$d 条未读</string>
+    <string name="memo_count_private_hidden"> · %1$d 条私密（已隐藏）</string>
+    <string name="memo_empty_day">这一天还没有备忘。</string>
+    <string name="memo_empty_all">还没有备忘，点下方按钮新建一条。</string>
+    <string name="memo_untitled">（无标题）</string>
+    <string name="memo_badge_pinned">📌 置顶  </string>
+    <string name="memo_badge_unread">🔴 未读  </string>
+    <string name="memo_badge_private">🔒 私密  </string>
+    <string name="memo_badge_unlockpopup">🔔 解锁弹窗  </string>
+    <string name="memo_action_pin">置顶</string>
+    <string name="memo_action_unpin">取消置顶</string>
+    <string name="memo_action_mark_done">标为完成</string>
+    <string name="memo_action_mark_undone">标为未完成</string>
+    <string name="memo_action_mark_read">标为已读</string>
+    <string name="memo_action_mark_unread">标为未读</string>
+    <string name="memo_actions_title">备忘操作</string>
+    <string name="memo_delete_title">删除备忘</string>
+    <string name="memo_delete_message">确定删除这条备忘吗？此操作不可恢复。</string>
+    <string name="memo_month_label">%1$d 年 %2$d 月</string>
+    <string name="memo_pin_set_hint">设置 4-8 位数字 PIN</string>
+    <string name="memo_pin_enable_title">启用私密备忘录</string>
+    <string name="memo_pin_enable_msg">首次使用需要设置 PIN。忘记 PIN 将无法查看私密备忘。</string>
+    <string name="memo_pin_len_error">PIN 需要 4-8 位数字</string>
+    <string name="memo_pin_reenter">再次输入 PIN</string>
+    <string name="memo_pin_confirm_title">确认 PIN</string>
+    <string name="memo_pin_mismatch">两次输入不一致</string>
+    <string name="memo_pin_enabled">私密区已启用</string>
+    <string name="memo_pin_enter">输入 PIN</string>
+    <string name="memo_pin_unlock_title">解锁私密备忘录</string>
+    <string name="memo_pin_unlock_btn">解锁</string>
+    <string name="memo_pin_wrong">PIN 不正确</string>
+    <string-array name="memo_weekdays">
+        <item>一</item>
+        <item>二</item>
+        <item>三</item>
+        <item>四</item>
+        <item>五</item>
+        <item>六</item>
+        <item>日</item>
+    </string-array>
+</resources>

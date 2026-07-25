@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 启动图标背景 v3：与应用主色同系的蓝靛渐变，左上柔光 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="135"
+                android:centerColor="#5568E6"
+                android:endColor="#333A9E"
+                android:startColor="#7C9BFF"
+                android:type="linear" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <gradient
+                android:centerX="0.26"
+                android:centerY="0.16"
+                android:endColor="#00FFFFFF"
+                android:gradientRadius="170"
+                android:startColor="#30FFFFFF"
+                android:type="radial" />
+            <size
+                android:width="108dp"
+                android:height="108dp" />
+        </shape>
+    </item>
+</layer-list>

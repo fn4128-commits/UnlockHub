@@ -1,0 +1,51 @@
+# ---------- 签名与密钥（绝不能提交）----------
+keystore.properties
+*.keystore
+*.jks
+*.p12
+*.pepk
+local.properties
+
+# ---------- 构建产物 ----------
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+
+# ---------- 依赖 ----------
+node_modules/
+cloudflare-worker/node_modules/
+.wrangler/
+cloudflare-worker/.wrangler/
+
+# ---------- Python ----------
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# ---------- IDE / 系统 ----------
+*.iml
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ---------- 含个人信息的内部文档 ----------
+play-store-docs/06-project-record.md
+
+# ---------- 本地日志与临时文件 ----------
+*.log
+wdev.log
+wdev.err.log
+web_zh.txt
+zh_dump.txt
+zh_lines.json
+re_dump.txt
+last33.txt
+sync_dump.txt

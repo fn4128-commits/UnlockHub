@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS local_accounts (
+  public_id TEXT PRIMARY KEY,
+  nickname TEXT NOT NULL,
+  password_salt TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

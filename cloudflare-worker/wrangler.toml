@@ -1,0 +1,11 @@
+name = "safeping"
+main = "src/worker.js"
+compatibility_date = "2026-05-31"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "safeping"
+database_id = "40faaa95-6866-43fe-b195-d21fdfe6ead0"
+
+[triggers]
+crons = ["0 */6 * * *"]

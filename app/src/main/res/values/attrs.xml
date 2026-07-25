@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 语义化主题属性：随浅/深主题切换的颜色都从这里取，
+         固定不变的颜色（accent、白底输入框文字等）仍直接用 @color -->
+    <attr name="appCanvasDrawable" format="reference" />
+    <attr name="appStickyDrawable" format="reference" />
+    <attr name="appBgCard" format="color" />
+    <attr name="appBgCardElevated" format="color" />
+    <attr name="appTextPrimary" format="color" />
+    <attr name="appTextSecondary" format="color" />
+    <attr name="appTextMuted" format="color" />
+    <attr name="appLine" format="color" />
+    <attr name="appAccentSoft" format="color" />
+    <attr name="appAvatarFill" format="color" />
+    <attr name="appChipUnselected" format="color" />
+</resources>

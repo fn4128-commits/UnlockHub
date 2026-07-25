@@ -1,0 +1,603 @@
+<resources>
+    <string name="app_name">UnlockHub</string>
+    <string name="bound_app_accessibility_desc">Only detects whether your bound apps are opened, used to backfill today\'s first unlock when the unlock broadcast fails. It never reads or records screen content.</string>
+    <string name="share_subject">UnlockHub status</string>
+    <string name="share_chooser_title">Share how to view</string>
+    <string name="hub_subtitle">Unlock event hub</string>
+    <string name="module_safeping_title">SafePing</string>
+    <string name="module_safeping_desc">Record your first unlock each day and sync to family on schedule</string>
+    <string name="module_memo_title">Memos</string>
+    <string name="module_memo_desc">Calendar notes, checklists, timed reminders, private memos</string>
+    <string name="module_routine_title">Automation</string>
+    <string name="module_routine_desc">Define conditions and actions that run automatically when met</string>
+
+    <!-- Common -->
+    <string name="common_close">Close</string>
+    <string name="common_enter_arrow">Open →</string>
+    <string name="common_on">on</string>
+    <string name="common_off">off</string>
+    <string name="common_allowed">Allowed</string>
+    <string name="common_paused">Paused</string>
+    <string name="common_running">Running</string>
+
+    <!-- Main screen -->
+    <string name="main_status_overview">Overview</string>
+    <string name="main_modules">Modules</string>
+    <string name="main_crash_log_title">Last crash log</string>
+    <string name="main_no_crash">No crash records.</string>
+    <string name="main_today_not_recorded">No unlock recorded today</string>
+    <string name="main_today_recorded">First unlock recorded today</string>
+    <string name="main_auto_paused">Auto recording paused</string>
+    <string name="main_auto_running">Auto recording on</string>
+    <string name="main_status_line">%1$s · %2$d / %3$d days on this device\n%4$s · %5$s</string>
+
+    <!-- Settings -->
+    <string name="settings_back">Back to home</string>
+    <string name="settings_language">语言 / Language</string>
+    <string name="settings_language_hint">On = English（开启为 English）</string>
+    <string name="settings_header_hint">To record on unlock even after the app is swiped from recents, turn on all of the items below.</string>
+    <string name="settings_auto_record">Auto recording</string>
+    <string name="settings_auto_record_desc">When off, unlock monitoring and auto upload stop.</string>
+    <string name="settings_pause_label">Pause auto recording</string>
+    <string name="settings_realtime_label">Real-time monitoring (record on unlock instantly)</string>
+    <string name="settings_realtime_hint">On: stays in the background, records and confirms the moment you unlock and pops memo alerts instantly (shows one persistent notification). Off: stays resident only when a real-time feature (memo unlock popup / automation) is enabled; plain check-in recording is backfilled by a periodic background job instead — no persistent notification, but may be delayed by ~15 minutes.</string>
+    <string name="settings_unlockpopup_label">Pop up \"Recorded\" after unlock</string>
+    <string name="settings_unlockpopup_hint">When on, a full-screen popup confirms each day\'s first unlock once recorded, so you reliably see the status.</string>
+    <string name="settings_test_popup">Test unlock popup (simulate an unlock now)</string>
+    <string name="settings_test_toast">%1$d memo(s) pending · notifications %2$s</string>
+    <string name="settings_perms_title">Required permissions (record on unlock)</string>
+    <string name="settings_perms_desc">Check in order: ① Notifications ② Auto-start ③ No battery restriction ④ Allow background activity. After setup, try not to swipe this app from recents, or lock its card in the recents view.</string>
+    <string name="settings_perm_1">1. Allow notifications</string>
+    <string name="settings_perm_2">2. Important alerts (popup, sound)</string>
+    <string name="settings_perm_3">3. Auto-start (phone manager)</string>
+    <string name="settings_perm_4">4. No battery restriction / power whitelist</string>
+    <string name="settings_perm_5">5. Allow background activity</string>
+    <string name="settings_perm_6">6. App details (if the pages above aren\'t found)</string>
+    <string name="settings_send_test_notify">Send a test notification</string>
+    <string name="settings_test_notify_sent">Test notification sent</string>
+    <string name="settings_boundapp_title">Bound-app fallback</string>
+    <string name="settings_boundapp_desc">Tap \"Manage bound apps\" to search all apps on this device and select several. After SafePing is swiped from recents, opening any bound app backfills today\'s first unlock.</string>
+    <string name="settings_manage_boundapps">Manage bound apps</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_profile_password">Profile &amp; password</string>
+    <string name="settings_cannot_open">Cannot open system settings; please find SafePing manually in system settings</string>
+    <string name="settings_paused_done">Auto recording paused.</string>
+    <string name="settings_resumed_done">Auto recording resumed.</string>
+    <string name="settings_status_notif_perm">Notification permission: </string>
+    <string name="settings_notif_not_allowed">Not allowed (required)</string>
+    <string name="settings_status_autorecord">Auto recording: </string>
+
+    <!-- Unlock popup -->
+    <string name="popup_default_title">Reminder</string>
+    <string name="popup_tap_hint">Tap the content above to open this memo (opening marks it as read)</string>
+    <string name="popup_got_it">Got it</string>
+    <string name="popup_keep_unread_exit">Keep unread &amp; exit app</string>
+
+    <!-- Common (more) -->
+    <string name="common_delete">Delete</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_ok">OK</string>
+    <string name="common_next">Next</string>
+    <string name="common_save">Save</string>
+    <string name="common_saved">Saved</string>
+    <string name="common_clear">Clear</string>
+
+    <!-- Memo editor -->
+    <string name="memoedit_title_new">New memo</string>
+    <string name="memoedit_title_edit">Edit memo</string>
+    <string name="memoedit_private_title">Private memo</string>
+    <string name="memoedit_private_msg">This memo is private; enter your PIN to view it.</string>
+    <string name="memoedit_label_title">Title</string>
+    <string name="memoedit_hint_title">Memo title</string>
+    <string name="memoedit_label_type">Type</string>
+    <string name="memoedit_type_text">Text</string>
+    <string name="memoedit_type_checklist">Checklist / To-do</string>
+    <string name="memoedit_label_content">Content</string>
+    <string name="memoedit_hint_content">Write something…</string>
+    <string name="memoedit_label_checklist">Checklist items</string>
+    <string name="memoedit_add_item">＋ Add an item</string>
+    <string name="memoedit_hint_item">Item text</string>
+    <string name="memoedit_label_date">Calendar date (shown in calendar view)</string>
+    <string name="memoedit_no_date">No date (tap to choose)</string>
+    <string name="memoedit_label_remind">Timed reminder (pick time only; date uses the calendar date above, or today if unset)</string>
+    <string name="memoedit_no_remind">No reminder (tap to set)</string>
+    <string name="memoedit_clear_remind">Clear reminder</string>
+    <string name="memoedit_time_past">That time on that date has passed; change the calendar date or time</string>
+    <string name="memoedit_unlockpopup_title">🔔 Unlock popup reminder</string>
+    <string name="memoedit_uphint_off">When on, shows a full-screen popup (even on the lock screen), greatly raising the chance you see it. It appears after the \"Recorded\" notification.</string>
+    <string name="memoedit_uphint_time">A reminder time is set: full-screen popup at that time, and after it, on every unlock until you view it.</string>
+    <string name="memoedit_uphint_date">Only a date is set: from %1$s on, pops on every unlock until you view it.</string>
+    <string name="memoedit_uphint_none">No time set: pops on every unlock until you view it (turning this on marks the memo unread).</string>
+    <string name="memoedit_uphint_suffix">\nThe popup appears after the \"Recorded\" notification.</string>
+    <string name="memoedit_flag_pinned">Pin</string>
+    <string name="memoedit_flag_unread">Mark unread (show a badge on the app icon)</string>
+    <string name="memoedit_flag_private">Private (PIN required to view)</string>
+    <string name="memoedit_delete">Delete this memo</string>
+    <string name="memoedit_empty_save">Add some content before saving</string>
+    <string name="memoedit_private_need_pin">First set a PIN via \"Private\" on the memo home screen</string>
+    <string name="memoedit_alarm_title">Reminder may not be on time</string>
+    <string name="memoedit_alarm_msg">The system \"Alarms &amp; reminders\" permission isn\'t granted, so reminders may be delayed (possibly a lot in battery-saver mode). Enable it for on-time reminders.</string>
+    <string name="memoedit_alarm_go">Enable</string>
+    <string name="memoedit_alarm_later">Not now</string>
+
+    <!-- SafePing -->
+    <string name="sp_back">← Back</string>
+    <string name="sp_subtitle">Unlock records &amp; sync</string>
+    <string name="sp_settings">Settings</string>
+    <string name="sp_today_status">Today</string>
+    <string name="sp_share_title">Share with family</string>
+    <string name="sp_share_desc">Send the status page link to your family. They need to register/sign in on the web to view, and you must add their nickname on this phone first.</string>
+    <string name="sp_copy_uid">Copy my UID</string>
+    <string name="sp_copied_uid">UID copied</string>
+    <string name="sp_copy_link">Copy status page link</string>
+    <string name="sp_copied_link">Status page link copied (UID included)</string>
+    <string name="sp_copy_guide">Copy full viewing guide</string>
+    <string name="sp_copied_guide">Viewing guide copied; you can paste it into a chat app</string>
+    <string name="sp_share_other">Share to other apps</string>
+    <string name="sp_open_browser">Open status page in browser</string>
+    <string name="sp_viewers_title">Viewers read/unread</string>
+    <string name="sp_viewers_desc">Add the nicknames your family used to register on the web. After syncing, who has read appears here.</string>
+    <string name="sp_manage_viewers">Manage viewer nicknames</string>
+    <string name="sp_loading_read">Loading read status…</string>
+    <string name="sp_local_records">Local records</string>
+    <string name="sp_days_fmt">%1$d / %2$d days</string>
+    <string name="sp_sync_settings">Sync settings</string>
+    <string name="sp_sync_desc">Uploads right after unlock; on a sync day the cloud composes a message from the database and shows it on the status page.</string>
+    <string name="sp_mode_weekday">Sync by weekday (choose Mon–Sun)</string>
+    <string name="sp_mode_interval">Sync by interval (start date + interval)</string>
+    <string name="sp_sync_days">Sync days (multi-select)</string>
+    <string name="sp_weekday_hint">On a sync day, the last 7 days of records are pulled from the cloud into the message; if fewer, all records are sent.</string>
+    <string name="sp_anchor_label">Start date</string>
+    <string name="sp_pick_anchor">Choose start date</string>
+    <string name="sp_interval_label">Sync interval</string>
+    <string name="sp_custom_interval">Custom interval (1-180 days)</string>
+    <string name="sp_interval_hint">On a sync day, records within the interval are pulled from the cloud; if fewer, all records in that period are sent.</string>
+    <string name="sp_save_sync">Save sync settings</string>
+    <string name="sp_recent_sync">Recent syncs</string>
+    <string name="sp_need_one_day">Select at least one sync day</string>
+    <string name="sp_invalid_interval">Enter a valid sync interval</string>
+    <string name="sp_interval_range">Sync interval must be 1-%1$d days</string>
+    <string name="sp_sync_saved">Sync settings saved</string>
+    <string name="sp_anchor_btn">Start date: %1$s</string>
+    <string name="sp_today_first_none">First unlock today: none</string>
+    <string name="sp_today_first_at">First unlock today: %1$s</string>
+    <string name="sp_next_msg">Next status message: %1$s</string>
+    <string name="sp_last_unlock_none">Last unlock: none</string>
+    <string name="sp_last_unlock_at">Last unlock: %1$s</string>
+    <string name="sp_week_recorded">Recorded this week: %1$d days\n</string>
+    <string name="sp_uploaded">Uploaded to cloud: %1$d days</string>
+    <string name="sp_pending_upload"> · pending: %1$d days</string>
+    <string name="sp_sync_way">\nSync mode: </string>
+    <string name="sp_by_weekday">By weekday (%1$s)</string>
+    <string name="sp_by_interval">By interval (from %1$s, every %2$d days)</string>
+    <string name="sp_last_sync_error">\nLast sync note: %1$s</string>
+    <string name="sp_read_need_account">After registering and syncing, each family member\'s read status appears here.</string>
+    <string name="sp_read_load_fail">Cannot load read status right now: %1$s</string>
+    <string name="sp_no_sync_msg">No sync messages yet. One is generated after the first unlock on a sync day while online.</string>
+    <string name="sp_msg_default">Message</string>
+    <string name="sp_no_viewers">: no viewers configured\n</string>
+    <string name="sp_unknown">Unknown</string>
+    <string name="sp_read">: read</string>
+    <string name="sp_unread">: unread</string>
+    <string name="sp_no_history_pending">No status messages yet. %1$d day(s) pending upload on this device.</string>
+    <string name="sp_no_history">No status messages yet. Records upload right after unlock; a message is generated on a sync day.</string>
+    <string name="sp_generated">Generated the status message for %1$s</string>
+    <string name="sp_pending_line">\nPending upload: %1$d days</string>
+    <!-- Automation: condition/action descriptions -->
+    <string name="rt_trig_time">at %1$s:%2$s%3$s</string>
+    <string name="rt_trig_charger_on">charger plugged in</string>
+    <string name="rt_trig_charger_off">charger unplugged</string>
+    <string name="rt_trig_battery_low">battery low</string>
+    <string name="rt_trig_first_unlock">first unlock of the day</string>
+    <string name="rt_trig_any_unlock">every unlock</string>
+    <string name="rt_trig_app_open">\"%1$s\" is opened</string>
+    <string name="rt_trig_wifi_any">connected to any Wi-Fi</string>
+    <string name="rt_trig_wifi">connected to Wi-Fi \"%1$s\"</string>
+    <string name="rt_trig_bt_any">connected to any Bluetooth device</string>
+    <string name="rt_trig_bt">connected to Bluetooth \"%1$s\"</string>
+    <string name="rt_trig_place">arriving near \"%1$s\"</string>
+    <string name="rt_default_app">app</string>
+    <string name="rt_default_place">the place</string>
+    <string name="rt_con_time_range">, and between %1$s:%2$s–%3$s:%4$s</string>
+    <string name="rt_con_charging">, and charging</string>
+    <string name="rt_con_not_charging">, and not charging</string>
+    <string name="rt_con_wifi_any">, and Wi-Fi connected</string>
+    <string name="rt_con_wifi">, and connected to Wi-Fi \"%1$s\"</string>
+    <string name="rt_con_bt_any">, and a Bluetooth device connected</string>
+    <string name="rt_con_bt">, and connected to Bluetooth \"%1$s\"</string>
+    <string name="rt_con_place">, and near \"%1$s\"</string>
+    <string name="rt_act_popup">Show popup: %1$s</string>
+    <string name="rt_act_notify">Send notification: %1$s</string>
+    <string name="rt_act_memo">Activate memo \"%1$s\"</string>
+    <string name="rt_act_open_app">Open \"%1$s\"</string>
+    <string name="rt_act_dnd_on">Turn on Do Not Disturb</string>
+    <string name="rt_act_dnd_off">Turn off Do Not Disturb</string>
+    <string name="rt_act_countdown">Start a %1$d-minute countdown</string>
+    <string name="rt_weekdays_all">(daily)</string>
+    <string name="rt_weekdays_prefix">(</string>
+    <string name="rt_weekdays_suffix">)</string>
+    <string name="rt_if">If: %1$s</string>
+    <string name="rt_then">Then: %1$s</string>
+    <string name="rts_header">Automation · conditions trigger actions</string>
+    <string name="rts_add">＋ New rule</string>
+    <string name="rts_tips_title">Notes</string>
+    <string name="rts_tips">· The \"app opened\" condition needs Usage access permission\n· \"Toggle Do Not Disturb\" needs DND permission in system settings\n· \"Open app\" falls back to a tappable notification when the system blocks background launches\n· \"Arrive at a place\" needs location permission; set it to \"Allow all the time\" for background triggers\n· Charging/battery conditions work while the app process is alive; add UnlockHub to the battery whitelist</string>
+    <string name="rts_empty">No rules yet. A rule = condition(s) (up to two) + an action.</string>
+    <string name="rts_count">%1$d rule(s) · %2$d enabled</string>
+    <string name="rts_unnamed">Unnamed rule</string>
+    <string name="rts_delete_title">Delete rule</string>
+    <string name="rts_delete_msg">Delete \"%1$s\"?</string>
+
+    <!-- Register / login -->
+    <string name="reg_header">Registration needs only a nickname and password; a UID is generated automatically.</string>
+    <string name="reg_title">Create an account</string>
+    <string name="reg_hint_nickname">e.g. Alex</string>
+    <string name="reg_hint_password">At least 6 characters</string>
+    <string name="reg_label_backend">Backend URL</string>
+    <string name="reg_label_nickname">Nickname (display only)</string>
+    <string name="reg_label_password">Password</string>
+    <string name="reg_button">Register and continue</string>
+    <string name="reg_login_title">Sign in to an existing account</string>
+    <string name="reg_label_nickname2">Nickname</string>
+    <string name="reg_login_button">Sign in with nickname + password</string>
+    <string name="reg_invalid">Nickname cannot be empty and the password needs at least 6 characters.</string>
+    <string name="reg_done">Registered. UID: %1$s (the viewing guide was copied to your clipboard)</string>
+    <string name="reg_fail">Registration failed: %1$s</string>
+    <string name="reg_need_both">Enter your nickname and password.</string>
+    <string name="reg_login_fail">Sign-in failed: %1$s</string>
+
+    <!-- Profile -->
+    <string name="pf_back">Back to home</string>
+    <string name="pf_header">Manage your account, password and sharing.</string>
+    <string name="pf_reset_pw">Reset password</string>
+    <string name="pf_cur_pw">Current password</string>
+    <string name="pf_new_pw_hint">New password (at least 6 characters)</string>
+    <string name="pf_confirm_pw">Confirm new password</string>
+    <string name="pf_new_pw">New password</string>
+    <string name="pf_save_pw">Save new password</string>
+    <string name="pf_quick">Quick actions</string>
+    <string name="pf_copy_uid">Copy UID</string>
+    <string name="pf_copied_uid">UID copied</string>
+    <string name="pf_copy_link">Copy status page link</string>
+    <string name="pf_copied_link">Status page link copied</string>
+    <string name="pf_copy_guide">Copy full viewing guide</string>
+    <string name="pf_copied_guide">Viewing guide copied</string>
+    <string name="pf_share">Share to other apps</string>
+    <string name="pf_open_web">Open status page in browser</string>
+    <string name="pf_app_settings">App settings</string>
+    <string name="pf_app_settings_desc">Jump to system permissions such as notifications, battery optimization and exact alarms.</string>
+    <string name="pf_open_settings">Open app settings</string>
+    <string name="pf_logout">Sign out</string>
+    <string name="pf_pw_invalid">Enter your current password; the new password needs at least 6 characters.</string>
+    <string name="pf_pw_mismatch">The new passwords don\'t match.</string>
+    <string name="pf_pw_updated">Password updated. Use the new password on phone and web.</string>
+    <string name="pf_pw_fail">Update failed: %1$s</string>
+
+    <!-- Viewers -->
+    <string name="vw_header">Add the nicknames your family used to register on the web. Once they retrieve a UID, you can see and copy it here.</string>
+    <string name="vw_title">Viewer nicknames</string>
+    <string name="vw_desc">Confirm the nickname matches their web registration exactly (e.g. \"Mom\", \"Dad\").</string>
+    <string name="vw_add">Add nickname</string>
+    <string name="vw_load_fail">Load failed: %1$s</string>
+    <string name="vw_empty">No viewers yet. Family must register on the web first, then add their nicknames here.</string>
+    <string name="vw_uid_none">UID: not registered</string>
+    <string name="vw_more">More actions</string>
+    <string name="vw_copy_uid">Copy UID</string>
+    <string name="vw_edit">Edit</string>
+    <string name="vw_uid_label">SafePing viewer UID</string>
+    <string name="vw_uid_copied">UID copied</string>
+    <string name="vw_hint_nickname">e.g. Mom</string>
+    <string name="vw_add_title">Add viewer nickname</string>
+    <string name="vw_edit_title">Edit viewer nickname</string>
+    <string name="vw_empty_nickname">Nickname cannot be empty</string>
+    <string name="vw_saved">Saved</string>
+    <string name="vw_save_fail">Save failed: %1$s</string>
+    <string name="vw_del_title">Delete \"%1$s\"?</string>
+    <string name="vw_del_msg">After deletion this nickname can no longer view your status until added again.</string>
+    <string name="vw_deleted">Deleted</string>
+    <string name="vw_del_fail">Delete failed: %1$s</string>
+
+    <!-- Bound apps -->
+    <string name="ba_back">Back to settings</string>
+    <string name="ba_header">Pick icons like on your home screen. This lists every app on this device that can be opened by tapping its icon.</string>
+    <string name="ba_title">Bound apps</string>
+    <string name="ba_search">Search app name</string>
+    <string name="ba_select_visible">Select all shown</string>
+    <string name="ba_clear_visible">Clear shown</string>
+    <string name="ba_no_match">No matching apps. Try another keyword.</string>
+    <string name="ba_selected">Selected</string>
+    <string name="ba_summary">%1$d bound · %2$d shown · %3$d openable apps on this device</string>
+    <string name="ba_note">\nNote: tap icons to bind apps. After SafePing is swiped from recents, opening any bound app backfills today\'s first unlock.</string>
+
+    <!-- Notification channels & texts -->
+    <string name="ch_memo_reminder">Memo reminders</string>
+    <string name="ch_memo_reminder_desc">Notifies when a memo reaches its reminder time.</string>
+    <string name="ch_memo_badge">Memo unread badge</string>
+    <string name="ch_memo_badge_desc">Shows a badge on the app icon when memos are unread.</string>
+    <string name="ch_quick_add">Quick add memo</string>
+    <string name="ch_quick_add_desc">Keeps an entry in the notification shade; tap it to create a memo.</string>
+    <string name="nt_quick_add_title">＋ Quick add memo</string>
+    <string name="nt_quick_add_text">Tap here to create a memo now</string>
+    <string name="nt_private_memo_title">🔒 Private memo reminder</string>
+    <string name="nt_private_memo_text">You have a private memo to handle; tap to view.</string>
+    <string name="nt_memo_reminder">Memo reminder</string>
+    <string name="nt_no_content">(No content)</string>
+    <string name="nt_private_due">A private memo has reached its reminder time</string>
+    <string name="ch_urgent">UnlockHub important alerts</string>
+    <string name="ch_urgent_desc">Alerts on your first unlock each day and on successful sync; viewable in the shade.</string>
+    <string name="nt_recorded_title">UnlockHub recorded</string>
+    <string name="nt_recorded_text">Recorded the first unlock on %1$s · %2$d days on this device</string>
+    <string name="nt_sync_ok_title">UnlockHub synced</string>
+    <string name="nt_sync_ok_text">Uploaded records for %1$s</string>
+    <string name="nt_test_title">UnlockHub test notification</string>
+    <string name="nt_test_text">Notifications work; you can see them in the shade.</string>
+    <string name="ch_popup">Unlock popup alerts</string>
+    <string name="ch_popup_desc">Important alerts shown as a full-screen popup.</string>
+    <string name="ch_fgs">Background guard</string>
+    <string name="ch_fgs_desc">Persistent notification that keeps daily check-in recording and automation running.</string>
+    <string name="nt_fgs_title">UnlockHub is running in the background</string>
+    <string name="nt_fgs_text">Keeping app-open automation and unlock alerts running</string>
+    <string name="nt_capture_title">UnlockHub recorded</string>
+    <string name="nt_capture_text">Recorded the first unlock on %1$s; it will upload per your sync schedule.</string>
+
+    <!-- Sync schedule -->
+    <string name="sy_days">%1$d days</string>
+    <string name="sy_less_day">less than a day</string>
+    <string name="sy_today">today</string>
+    <string name="sy_wait_net">Sync day reached, waiting for network</string>
+    <string name="sy_wait_unlock">Sync day reached, waiting for today\'s first unlock</string>
+    <string name="sy_wait_upload">Sync day reached, %1$d day(s) of records pending upload</string>
+    <string name="sy_wait_gen">Sync day reached, waiting to generate the message</string>
+    <string name="sy_next">%1$s (in %2$s)</string>
+    <string name="sy_none">none selected</string>
+    <string-array name="sy_weekdays">
+        <item>Mon</item>
+        <item>Tue</item>
+        <item>Wed</item>
+        <item>Thu</item>
+        <item>Fri</item>
+        <item>Sat</item>
+        <item>Sun</item>
+    </string-array>
+
+    <!-- Battery optimization status -->
+    <string name="bo_na">Battery optimization: nothing to set on this device</string>
+    <string name="bo_off">System battery optimization: off (unrestricted, recommended)</string>
+    <string name="bo_on">System battery optimization: still on (tap the button above to turn it off)</string>
+    <string name="bo_note">Note: this only checks Android\'s built-in \"battery optimization\" switch. If you already set \"Unrestricted\" or \"Allow background\" in your phone manager, you can ignore this line.</string>
+
+    <!-- Share guide -->
+    <string name="sh_guide">[UnlockHub — view my status]\nMy nickname: %1$s\nMy UID: %2$s\nStatus page: %3$s\n\nSteps:\n1. Open the link above (my UID is filled in automatically)\n2. Register a viewer account on the web (nickname + password); sign in with UID + password\n3. Tell me the nickname you registered — I\'ll add you to my viewer list and send you your UID\n4. Forgot your UID? On the sign-in page tap \"Forgot UID?\" and enter your nickname, my nickname and password\n5. After signing in you can see my sync status; read/unread is tracked per nickname</string>
+
+    <!-- Time format -->
+    <string name="tf_datetime_pattern">MMM d, HH:mm</string>
+    <string name="tf_to">–</string>
+    <string name="tf_d_h">%1$dd %2$dh</string>
+    <string name="tf_h">%1$dh</string>
+    <string name="tf_m">%1$d min</string>
+
+    <!-- Automation execution -->
+    <string name="re_triggered">Automation rule triggered</string>
+    <string name="re_app">app</string>
+    <string name="re_memo_title">Memo reminder</string>
+    <string name="re_memo_text">An automation rule activated a memo; please check it.</string>
+    <string name="re_open_fail_title">Cannot open app</string>
+    <string name="re_open_fail_text">\"%1$s\" may have been uninstalled.</string>
+    <string name="re_dnd_fail_title">Do Not Disturb toggle failed</string>
+    <string name="re_dnd_fail_text">Grant UnlockHub the DND permission in system settings: Settings &gt; Notifications &gt; Do Not Disturb access.</string>
+    <string name="re_reminder">Reminder</string>
+    <string name="re_countdown">Countdown</string>
+    <string name="re_countdown_title">%1$s · ends in %2$d min</string>
+    <string name="re_countdown_started">Countdown started</string>
+    <string name="re_countdown_text">I\'ll remind you in %1$d minutes%2$s</string>
+    <string name="re_auto_reminder">Automation reminder</string>
+    <string name="re_automation">Automation</string>
+    <string name="re_tap_open">Tap to open \"%1$s\"</string>
+    <string name="ch_routine">Automation rules</string>
+    <string name="ch_routine_desc">Notifications for automation actions run when conditions are met.</string>
+
+    <!-- Rule editor -->
+    <string name="red_title_new">New rule</string>
+    <string name="red_title_edit">Edit rule</string>
+    <string name="red_name">Rule name</string>
+    <string name="red_name_hint">e.g. Arrive home reminder</string>
+    <string name="red_cond1">Condition 1 · trigger</string>
+    <string name="red_pick_trigger">Choose a trigger</string>
+    <string name="red_cond2">Condition 2 · constraint</string>
+    <string name="red_pick_constraint">Choose a constraint</string>
+    <string name="red_action">Action</string>
+    <string name="red_pick_action">Choose an action</string>
+    <string name="red_save">Save rule</string>
+    <string name="red_delete">Delete this rule</string>
+    <string name="red_g_time">Time</string>
+    <string name="red_g_unlock">Unlock &amp; usage</string>
+    <string name="red_g_power">Power</string>
+    <string name="red_g_conn">Connectivity</string>
+    <string name="red_g_place">Location</string>
+    <string name="red_t_time">Scheduled (daily/weekly)</string>
+    <string name="red_t_first_unlock">First unlock of the day</string>
+    <string name="red_t_any_unlock">Every unlock</string>
+    <string name="red_t_app_open">App opened</string>
+    <string name="red_t_charger_on">Charger plugged in</string>
+    <string name="red_t_charger_off">Charger unplugged</string>
+    <string name="red_t_battery_low">Battery low</string>
+    <string name="red_t_wifi">Connected to Wi-Fi</string>
+    <string name="red_t_bt">Connected to a Bluetooth device</string>
+    <string name="red_t_place">Arriving at a place</string>
+    <string name="red_c_time_range">Within a time range (may span midnight)</string>
+    <string name="red_c_charging">Charging</string>
+    <string name="red_c_not_charging">Not charging</string>
+    <string name="red_c_wifi">Connected to a specific Wi-Fi</string>
+    <string name="red_c_bt">Connected to a specific Bluetooth device</string>
+    <string name="red_c_place">Near a specific place</string>
+    <string name="red_a_popup">Popup alert</string>
+    <string name="red_a_countdown">Start a countdown</string>
+    <string name="red_a_memo">Activate a memo (unread + badge)</string>
+    <string name="red_a_open_app">Open an app</string>
+    <string name="red_a_dnd_on">Turn on Do Not Disturb</string>
+    <string name="red_a_dnd_off">Turn off Do Not Disturb</string>
+    <string name="red_time_at">Time: %1$s:%2$s</string>
+    <string name="red_repeat">Repeat (tap weekdays)</string>
+    <string name="red_pick_watch_app">Choose the app to watch</string>
+    <string name="red_app_is">App: %1$s</string>
+    <string name="red_hint_usage">Needs \"Usage access\" to detect app launches; for auto-switching (not just a notification), also grant \"Display over other apps\".</string>
+    <string name="red_wifi_label">Wi-Fi name (blank = any Wi-Fi)</string>
+    <string name="red_wifi_hint">e.g. Home-5G</string>
+    <string name="red_fill_wifi">Use currently connected Wi-Fi</string>
+    <string name="red_hint_wifi">Reading the Wi-Fi name needs location permission and system location on.</string>
+    <string name="red_bt_label">Bluetooth device name (blank = any device)</string>
+    <string name="red_bt_hint">e.g. Car audio / headphones</string>
+    <string name="red_bt_hint2">e.g. Car audio</string>
+    <string name="red_pick_paired">Choose from paired devices</string>
+    <string name="red_hint_bt">Reading device names needs the \"Nearby devices (Bluetooth)\" permission.</string>
+    <string name="red_hint_place">Needs location permission; to trigger in the background or on the lock screen, set location access to \"Allow all the time\".</string>
+    <string name="red_hint_battery">Follows the system low-battery event (usually 20%% or 15%%).</string>
+    <string name="red_hint_first_unlock">Triggers on your first unlock each day; with \"Popup alert\" you\'re sure to see it.</string>
+    <string name="red_hint_any_unlock">Triggers on every unlock (repeats within 60 seconds are merged to avoid nagging).</string>
+    <string name="red_from">From %1$s:%2$s</string>
+    <string name="red_to">To %1$s:%2$s (may span midnight)</string>
+    <string name="red_hint_place_con">On trigger, checks whether the last known location is within the radius.</string>
+    <string name="red_place_name">Place name</string>
+    <string name="red_place_hint">e.g. Home / Office / Gym</string>
+    <string name="red_place_saved">Location saved (%1$.4f, %2$.4f) · tap to record again</string>
+    <string name="red_place_record">Record current location as this place</string>
+    <string name="red_radius">Radius (meters, 100–5000)</string>
+    <string name="red_radius_hint">Default 300</string>
+    <string name="red_minutes">Countdown length (minutes)</string>
+    <string name="red_minutes_hint">e.g. 25</string>
+    <string name="red_end_text">Ending message (optional)</string>
+    <string name="red_end_hint">e.g. Time to focus</string>
+    <string name="red_hint_countdown">Starts timing when the condition is met and shows a full-screen alert at the end. E.g. open an app → 30-minute countdown.</string>
+    <string name="red_popup_content">Popup text</string>
+    <string name="red_notify_content">Notification text</string>
+    <string name="red_text_hint">Text to display</string>
+    <string name="red_hint_popup">Shows a banner while you\'re using the phone and a full-screen popup on the lock screen or right after unlock — far more likely to be seen than a normal notification.</string>
+    <string name="red_memo_is">Memo: %1$s</string>
+    <string name="red_pick_memo">Choose the memo to activate</string>
+    <string name="red_pick_open_app">Choose the app to open</string>
+    <string name="red_hint_dnd">Needs the system DND permission; you\'ll be prompted when saving.</string>
+    <string name="red_pick_app_title">Choose an app</string>
+    <string name="red_no_memo">No memos yet — create one in Memos first</string>
+    <string name="red_pick_memo_title">Choose a memo</string>
+    <string name="red_need_loc_retry">Grant location permission first, then tap again</string>
+    <string name="red_no_loc">Location isn\'t supported on this device</string>
+    <string name="red_getting_loc">Getting current location…</string>
+    <string name="red_no_loc_perm">Location permission missing</string>
+    <string name="red_loc_fail">Couldn\'t get the location; make sure system location is on</string>
+    <string name="red_loc_fail2">Couldn\'t get a location; make sure system location is on</string>
+    <string name="red_loc_saved">Current location saved</string>
+    <string name="red_wifi_need_loc">Reading the Wi-Fi name needs location permission; grant it and tap again</string>
+    <string name="red_wifi_fail">Couldn\'t read the current Wi-Fi (must be connected with system location on)</string>
+    <string name="red_bt_need_perm">Reading paired devices needs the \"Nearby devices\" permission; grant it and tap again</string>
+    <string name="red_no_bt">Bluetooth isn\'t supported on this device</string>
+    <string name="red_no_paired">No paired Bluetooth devices</string>
+    <string name="red_pick_paired_title">Choose a paired device</string>
+    <string name="red_no_bt_perm">\"Nearby devices\" permission missing</string>
+    <string name="red_need_trigger">Choose condition 1 (the trigger) first</string>
+    <string name="red_need_action">Choose an action to run</string>
+    <string name="red_need_constraint">Condition 2 is on — choose a constraint (or turn the switch off)</string>
+    <string name="red_need_watch_app">Choose the app to watch</string>
+    <string name="red_need_place">Tap \"Record current location as this place\" first</string>
+    <string name="red_need_minutes">Enter a number of minutes between 1 and 1440</string>
+    <string name="red_need_text">Enter some text</string>
+    <string name="red_need_memo">Choose the memo to activate</string>
+    <string name="red_need_open_app">Choose the app to open</string>
+    <string name="red_save_fail">Save failed: %1$s</string>
+    <string name="red_saved">Rule saved</string>
+    <string name="red_dnd_title">DND permission needed</string>
+    <string name="red_dnd_msg">Toggling Do Not Disturb needs the system DND permission. Enable it now?</string>
+    <string name="red_go_enable">Enable</string>
+    <string name="red_later">Later</string>
+    <string name="red_usage_title">Usage access needed</string>
+    <string name="red_usage_msg">The \"app opened\" condition needs \"Usage access\" to detect which app you opened. Enable it now?</string>
+
+    <!-- System settings launcher -->
+    <string name="oem_autostart">Auto-start</string>
+    <string name="oem_unrestricted">Unrestricted background</string>
+    <string name="oem_bg_activity">Background activity</string>
+    <string name="oem_no_autostart">Auto-start page not found; enable auto-start manually in App info.</string>
+    <string name="oem_no_battery">Battery page not found; set battery to \"Unrestricted / Don\'t optimize\" in App info.</string>
+    <string name="oem_no_bg">Background activity page not found; enable \"Allow background activity\" in App info.</string>
+    <string name="oem_hint_xiaomi">Find SafePing in the list, enable auto-start, and set battery saver to \"No restrictions\".</string>
+    <string name="oem_hint_huawei">Find SafePing and enable \"Auto-launch / background activity / manual launch\".</string>
+    <string name="oem_hint_oppo">Find SafePing and allow auto-start and background running.</string>
+    <string name="oem_hint_vivo">Find SafePing and allow auto-start and high background power use.</string>
+    <string name="oem_hint_samsung">Find SafePing, turn off power restrictions and allow background use.</string>
+    <string name="oem_hint_generic">Find SafePing in the list and enable the related permissions.</string>
+    <string name="oem_opened">Opened \"%1$s\" settings.</string>
+    <string name="oem_open_fail">Couldn\'t open the \"%1$s\" page.</string>
+
+    <!-- Misc -->
+    <string name="ui_toggle_theme">Toggle light/dark theme</string>
+    <string name="ui_settings">Settings</string>
+    <string name="ui_profile">Profile</string>
+    <string name="memo_empty_checklist">(Empty checklist)</string>
+    <string name="memo_checklist_done">%1$d/%2$d done\n%3$s</string>
+    <string name="api_need_login">Register or sign in first</string>
+    <string name="api_no_uid">The register/sign-in response is missing a UID</string>
+    <string name="cd_finished_title">Countdown finished</string>
+    <string name="cd_finished_text">Your countdown has ended.</string>
+    <string name="ba_none">Bound apps: none selected</string>
+    <string name="ba_count">Bound apps: %1$d selected</string>
+    <string name="sync_no_network">No network; will sync automatically once online</string>
+
+    <string-array name="sp_intervals">
+        <item>Every 1 day</item>
+        <item>Every 2 days</item>
+        <item>Every 3 days</item>
+        <item>Every 7 days</item>
+        <item>Every 15 days</item>
+        <item>Every 30 days</item>
+        <item>Custom</item>
+    </string-array>
+
+    <!-- Memos -->
+    <string name="memo_tab_list">List</string>
+    <string name="memo_tab_calendar">Calendar</string>
+    <string name="memo_tab_private">Private</string>
+    <string name="memo_quickadd_label">Quick add from notifications (keeps one notification; tap it to create a memo)</string>
+    <string name="memo_add">＋ New memo</string>
+    <string name="memo_date_count">%1$s · %2$d memo(s)</string>
+    <string name="memo_calendar_hint">Tap a date to see that day\'s memos; all memos are listed below.</string>
+    <string name="memo_count_total">%1$d total</string>
+    <string name="memo_count_unread"> · %1$d unread</string>
+    <string name="memo_count_private_hidden"> · %1$d private (hidden)</string>
+    <string name="memo_empty_day">No memos on this day.</string>
+    <string name="memo_empty_all">No memos yet. Tap the button below to create one.</string>
+    <string name="memo_untitled">(Untitled)</string>
+    <string name="memo_badge_pinned">📌 Pinned  </string>
+    <string name="memo_badge_unread">🔴 Unread  </string>
+    <string name="memo_badge_private">🔒 Private  </string>
+    <string name="memo_badge_unlockpopup">🔔 Unlock popup  </string>
+    <string name="memo_action_pin">Pin</string>
+    <string name="memo_action_unpin">Unpin</string>
+    <string name="memo_action_mark_done">Mark as done</string>
+    <string name="memo_action_mark_undone">Mark as not done</string>
+    <string name="memo_action_mark_read">Mark as read</string>
+    <string name="memo_action_mark_unread">Mark as unread</string>
+    <string name="memo_actions_title">Memo actions</string>
+    <string name="memo_delete_title">Delete memo</string>
+    <string name="memo_delete_message">Delete this memo? This cannot be undone.</string>
+    <string name="memo_month_label">%1$d-%2$02d</string>
+    <string name="memo_pin_set_hint">Set a 4-8 digit PIN</string>
+    <string name="memo_pin_enable_title">Enable private memos</string>
+    <string name="memo_pin_enable_msg">First use requires setting a PIN. If you forget it, private memos cannot be viewed.</string>
+    <string name="memo_pin_len_error">PIN must be 4-8 digits</string>
+    <string name="memo_pin_reenter">Enter PIN again</string>
+    <string name="memo_pin_confirm_title">Confirm PIN</string>
+    <string name="memo_pin_mismatch">The two entries don\'t match</string>
+    <string name="memo_pin_enabled">Private area enabled</string>
+    <string name="memo_pin_enter">Enter PIN</string>
+    <string name="memo_pin_unlock_title">Unlock private memos</string>
+    <string name="memo_pin_unlock_btn">Unlock</string>
+    <string name="memo_pin_wrong">Incorrect PIN</string>
+    <string-array name="memo_weekdays">
+        <item>Mo</item>
+        <item>Tu</item>
+        <item>We</item>
+        <item>Th</item>
+        <item>Fr</item>
+        <item>Sa</item>
+        <item>Su</item>
+    </string-array>
+</resources>
