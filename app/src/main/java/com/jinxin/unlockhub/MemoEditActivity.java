@@ -333,7 +333,7 @@ public final class MemoEditActivity extends BaseActivity {
             calendar.add(Calendar.HOUR_OF_DAY, 1);
             calendar.set(Calendar.MINUTE, 0);
         }
-        TimePickerDialog timeDialog = new TimePickerDialog(this, (timeView, hour, minute) -> {
+        TimePickerDialog timeDialog = new TimePickerDialog(this, R.style.ClockTimePicker, (timeView, hour, minute) -> {
             Calendar chosen = Calendar.getInstance();
             if (!memo.memoDate.isEmpty()) {
                 String[] parts = memo.memoDate.split("-");

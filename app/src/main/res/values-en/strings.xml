@@ -105,7 +105,7 @@
     <string name="memoedit_time_past">That time on that date has passed; change the calendar date or time</string>
     <string name="memoedit_unlockpopup_title">🔔 Unlock popup reminder</string>
     <string name="memoedit_uphint_off">When on, shows a full-screen popup (even on the lock screen), greatly raising the chance you see it. It appears after the \"Recorded\" notification.</string>
-    <string name="memoedit_uphint_time">A reminder time is set: full-screen popup at that time, and after it, on every unlock until you view it.</string>
+    <string name="memoedit_uphint_time">A reminder time is set: nothing pops at that moment — it starts popping from your next unlock after that time, until you view it.</string>
     <string name="memoedit_uphint_date">Only a date is set: from %1$s on, pops on every unlock until you view it.</string>
     <string name="memoedit_uphint_none">No time set: pops on every unlock until you view it (turning this on marks the memo unread).</string>
     <string name="memoedit_uphint_suffix">\nThe popup appears after the \"Recorded\" notification.</string>
@@ -565,6 +565,10 @@
     <string name="memo_empty_day">No memos on this day.</string>
     <string name="memo_empty_all">No memos yet. Tap the button below to create one.</string>
     <string name="memo_untitled">(Untitled)</string>
+    <string name="memo_read_section">Read (%1$d)</string>
+    <string name="memo_expire_days">🗑 auto-deletes in %1$d days</string>
+    <string name="memo_expire_today">🗑 auto-deletes today</string>
+    <string name="memo_expire_soon">🗑 auto-deletes in %1$d days (soon)</string>
     <string name="memo_badge_pinned">📌 Pinned  </string>
     <string name="memo_badge_unread">🔴 Unread  </string>
     <string name="memo_badge_private">🔒 Private  </string>

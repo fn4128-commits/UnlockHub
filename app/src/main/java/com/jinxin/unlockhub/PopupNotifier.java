@@ -59,7 +59,9 @@ public final class PopupNotifier {
                 .setContentTitle(title)
                 .setContentText(text)
                 .setStyle(new Notification.BigTextStyle().bigText(text))
-                .setCategory(Notification.CATEGORY_ALARM)
+                // 用 REMINDER 而非 ALARM：ALARM 属"必须响应"类，系统会让横幅常驻不自动收起，
+                // 导致同为备忘提醒却有的赖着不走、有的几秒就退。统一成几秒后自动收入状态栏。
+                .setCategory(Notification.CATEGORY_REMINDER)
                 .setAutoCancel(true)
                 .setContentIntent(fullScreen)
                 .setFullScreenIntent(fullScreen, true);

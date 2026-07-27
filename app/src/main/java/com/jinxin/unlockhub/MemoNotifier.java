@@ -169,11 +169,10 @@ public final class MemoNotifier {
 
     /** 到点提醒。 */
     public static void notifyReminder(Context context, Memo memo) {
-        // 加强提醒的备忘：到点直接整页弹窗，而不是普通通知
+        // 开了「解锁-弹窗」的备忘：到点【不】弹，只由调用方标记未读；
+        // 等到点之后的下一次解锁，再由 showUnlockPopupMemos 弹出。
+        // 这才符合该功能的语义——在解锁那一刻提醒，而不是到点自己跳出来。
         if (memo.unlockPopup) {
-            String title = (memo.isPrivate || memo.title.isEmpty()) ? context.getString(R.string.ch_memo_reminder) : memo.title;
-            String text = memo.isPrivate ? context.getString(R.string.nt_private_due) : memo.preview().replace('\n', ' ');
-            PopupNotifier.show(context, ID_REMINDER_BASE + (int) (memo.id % 1000), title, text, memo.id);
             return;
         }
         if (!canPostNotifications(context)) {

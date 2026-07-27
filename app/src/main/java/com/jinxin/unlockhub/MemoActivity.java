@@ -37,6 +37,7 @@ public final class MemoActivity extends BaseActivity {
 
     private boolean calendarMode;
     private boolean privateUnlocked;
+    private boolean readExpanded; // 「已读」折叠区是否展开
     private String selectedDate = "";
     private Calendar visibleMonth = Calendar.getInstance();
 
@@ -205,9 +206,57 @@ public final class MemoActivity extends BaseActivity {
             listContainer.addView(empty);
             return;
         }
+        // 活跃条目直接列出；已读的（read_at>0）收进可折叠的「已读」区，
+        // 避免读过的备忘越堆越多挤占列表，同时想查时一点就能展开。
+        List<Memo> active = new java.util.ArrayList<>();
+        List<Memo> read = new java.util.ArrayList<>();
         for (Memo memo : memos) {
+            if (memo.readAt > 0) {
+                read.add(memo);
+            } else {
+                active.add(memo);
+            }
+        }
+        for (Memo memo : active) {
             listContainer.addView(buildMemoCard(memo));
         }
+        if (!read.isEmpty()) {
+            listContainer.addView(buildReadSection(read));
+        }
+    }
+
+    /** 已读区：一行可点的标题，展开后显示已读备忘（含自动删除倒计时）。 */
+    private View buildReadSection(List<Memo> read) {
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+
+        TextView header = AppUi.body(this,
+                (readExpanded ? "▾ " : "▸ ") + getString(R.string.memo_read_section, read.size()));
+        header.setPadding(AppUi.dp(this, 4), AppUi.dp(this, 12), 0, AppUi.dp(this, 8));
+        header.setClickable(true);
+        header.setFocusable(true);
+        header.setOnClickListener(v -> {
+            readExpanded = !readExpanded;
+            refresh();
+        });
+        wrap.addView(header);
+
+        if (readExpanded) {
+            for (Memo memo : read) {
+                wrap.addView(buildMemoCard(memo));
+            }
+        }
+        return wrap;
+    }
+
+    /** 已读备忘距自动删除还剩几天（向上取整，至少 0）。 */
+    private int daysUntilAutoDelete(Memo memo) {
+        long elapsed = System.currentTimeMillis() - memo.readAt;
+        long remain = MemoRepository.READ_RETENTION_MS - elapsed;
+        if (remain <= 0) {
+            return 0;
+        }
+        return (int) Math.ceil(remain / (24.0 * 60 * 60 * 1000));
     }
 
     // ---------- 列表卡片 ----------
@@ -246,6 +295,26 @@ public final class MemoActivity extends BaseActivity {
             TextView previewView = AppUi.body(this, preview);
             previewView.setPadding(0, AppUi.dp(this, 4), 0, 0);
             card.addView(previewView);
+        }
+
+        // 已读备忘显示自动删除倒计时；剩 3 天内标红提示。想留住就取消已读或置顶。
+        if (memo.readAt > 0) {
+            int days = daysUntilAutoDelete(memo);
+            String text;
+            if (days <= 0) {
+                text = getString(R.string.memo_expire_today);
+            } else if (days <= 3) {
+                text = getString(R.string.memo_expire_soon, days);
+            } else {
+                text = getString(R.string.memo_expire_days, days);
+            }
+            TextView expire = AppUi.body(this, text);
+            expire.setTextSize(12);
+            expire.setPadding(0, AppUi.dp(this, 6), 0, 0);
+            if (days <= 3) {
+                expire.setTextColor(0xFFD32F2F);
+            }
+            card.addView(expire);
         }
 
         card.setOnClickListener(v -> {

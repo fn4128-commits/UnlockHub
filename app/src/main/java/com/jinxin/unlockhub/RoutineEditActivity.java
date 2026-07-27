@@ -436,7 +436,7 @@ public final class RoutineEditActivity extends com.jinxin.unlockhub.ui.BaseActiv
             case Routine.TRIGGER_TIME: {
                 Button timeButton = AppUi.secondaryButton(this,
                         getString(R.string.red_time_at, two(timeHour), two(timeMinute)));
-                timeButton.setOnClickListener(v -> new TimePickerDialog(this, (view, hour, minute) -> {
+                timeButton.setOnClickListener(v -> new TimePickerDialog(this, R.style.ClockTimePicker, (view, hour, minute) -> {
                     timeHour = hour;
                     timeMinute = minute;
                     renderAll();
@@ -514,14 +514,14 @@ public final class RoutineEditActivity extends com.jinxin.unlockhub.ui.BaseActiv
             case Routine.CONSTRAINT_TIME_RANGE: {
                 Button startButton = AppUi.secondaryButton(this,
                         getString(R.string.red_from, two(rangeStartHour), two(rangeStartMinute)));
-                startButton.setOnClickListener(v -> new TimePickerDialog(this, (view, hour, minute) -> {
+                startButton.setOnClickListener(v -> new TimePickerDialog(this, R.style.ClockTimePicker, (view, hour, minute) -> {
                     rangeStartHour = hour;
                     rangeStartMinute = minute;
                     renderAll();
                 }, rangeStartHour, rangeStartMinute, true).show());
                 Button endButton = AppUi.secondaryButton(this,
                         getString(R.string.red_to, two(rangeEndHour), two(rangeEndMinute)));
-                endButton.setOnClickListener(v -> new TimePickerDialog(this, (view, hour, minute) -> {
+                endButton.setOnClickListener(v -> new TimePickerDialog(this, R.style.ClockTimePicker, (view, hour, minute) -> {
                     rangeEndHour = hour;
                     rangeEndMinute = minute;
                     renderAll();

@@ -105,7 +105,7 @@
     <string name="memoedit_time_past">该日期的这个时间已过，请改日历日期或时间</string>
     <string name="memoedit_unlockpopup_title">🔔 解锁-弹窗加强提醒</string>
     <string name="memoedit_uphint_off">开启后以整页弹窗提醒（锁屏也能弹出），大幅提高被看到的概率。弹窗排在「状态已记录」通知之后。</string>
-    <string name="memoedit_uphint_time">当前设置了提醒时间：到点整页弹窗，且到点之后每次解锁都弹，直到你查看它。</string>
+    <string name="memoedit_uphint_time">当前设置了提醒时间：到点不打扰你，从到点之后的下一次解锁开始弹，直到你查看它。</string>
     <string name="memoedit_uphint_date">当前只关联了日期：从 %1$s 起，每次解锁都弹，直到你查看它。</string>
     <string name="memoedit_uphint_none">未设置时间：每次解锁都弹，直到你查看它（开启后本条自动设为未读）。</string>
     <string name="memoedit_uphint_suffix">\n弹窗顺序排在「状态已记录」通知之后。</string>
@@ -565,6 +565,10 @@
     <string name="memo_empty_day">这一天还没有备忘。</string>
     <string name="memo_empty_all">还没有备忘，点下方按钮新建一条。</string>
     <string name="memo_untitled">（无标题）</string>
+    <string name="memo_read_section">已读（%1$d）</string>
+    <string name="memo_expire_days">🗑 %1$d 天后自动删除</string>
+    <string name="memo_expire_today">🗑 今天自动删除</string>
+    <string name="memo_expire_soon">🗑 %1$d 天后自动删除（即将到期）</string>
     <string name="memo_badge_pinned">📌 置顶  </string>
     <string name="memo_badge_unread">🔴 未读  </string>
     <string name="memo_badge_private">🔒 私密  </string>

@@ -21,6 +21,13 @@
         <item name="appChipUnselected">@color/chip_unselected</item>
     </style>
 
+    <!-- 时间选择器：强制时钟（表盘）模式。选完小时会自动跳到分钟盘，
+         而不是并排两个滚轮（spinner）让用户各选各的。 -->
+    <style name="ClockTimePicker" parent="android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:timePickerMode">clock</item>
+        <item name="android:colorAccent">@color/accent</item>
+    </style>
+
     <!-- 浅色主题：主页图标旁的按钮切换 -->
     <style name="AppTheme.Light">
         <item name="android:windowLightStatusBar">true</item>
