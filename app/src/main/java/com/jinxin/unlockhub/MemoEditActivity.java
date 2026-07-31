@@ -443,7 +443,6 @@ public final class MemoEditActivity extends BaseActivity {
         repository.save(memo);
         MemoReminderScheduler.schedule(this, memo);
         MemoNotifier.updateBadge(this);
-        com.jinxin.unlockhub.sync.MemoSync.syncAsync(this);
 
         if (memo.remindAt > System.currentTimeMillis() && !MemoReminderScheduler.canScheduleExact(this)) {
             new AlertDialog.Builder(this)
@@ -473,7 +472,6 @@ public final class MemoEditActivity extends BaseActivity {
                     MemoReminderScheduler.cancel(this, memo.id);
                     repository.delete(memo.id);
                     MemoNotifier.updateBadge(this);
-                    com.jinxin.unlockhub.sync.MemoSync.syncAsync(this);
                     finish();
                 })
                 .setNegativeButton(getString(R.string.common_cancel), null)

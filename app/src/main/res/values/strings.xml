@@ -46,13 +46,11 @@
     <string name="settings_test_popup">测试解锁弹窗（立即模拟一次解锁）</string>
     <string name="settings_test_toast">待弹备忘 %1$d 条 · 通知%2$s</string>
     <string name="settings_perms_title">必开权限（解锁即记录）</string>
-    <string name="settings_perms_desc">按顺序检查：① 通知 ② 自启动 ③ 后台无限制 ④ 允许后台活动。 设置完成后尽量不要从多任务划掉本应用，或在多任务里锁定本应用卡片。</string>
+    <string name="settings_perms_desc">按顺序检查：① 通知 ② 重要提醒 ③ 后台无限制。 若找不到对应页面，用第 4 项进「应用详情」手动设置（自启动、允许后台活动也在里面）。设置完成后尽量不要从多任务划掉本应用。</string>
     <string name="settings_perm_1">1. 允许通知</string>
     <string name="settings_perm_2">2. 重要提醒（弹窗、声音）</string>
-    <string name="settings_perm_3">3. 自启动（手机管家）</string>
-    <string name="settings_perm_4">4. 后台无限制 / 省电白名单</string>
-    <string name="settings_perm_5">5. 允许后台活动</string>
-    <string name="settings_perm_6">6. 应用详情（找不到上面页面时）</string>
+    <string name="settings_perm_3">3. 后台无限制 / 省电白名单</string>
+    <string name="settings_perm_4">4. 应用详情（自启动等其余权限在此）</string>
     <string name="settings_send_test_notify">发送测试通知</string>
     <string name="settings_test_notify_sent">已发送测试通知</string>
     <string name="settings_boundapp_title">绑定应用兜底</string>
@@ -245,6 +243,10 @@
     <string name="reg_fail">注册失败: %1$s</string>
     <string name="reg_need_both">请输入昵称和密码。</string>
     <string name="reg_login_fail">登录失败: %1$s</string>
+    <string name="reg_label_email">电子邮箱</string>
+    <string name="reg_hint_email">例如：me@example.com</string>
+    <string name="reg_email_hint">仅在「昵称和密码都与他人相同」时用来区分账号。我们不会验证它，也不会发送任何邮件。</string>
+    <string name="reg_need_email">请填写电子邮箱（用于区分同名同密码的账号）。</string>
 
     <!-- 个人资料 -->
     <string name="pf_back">返回主页</string>

@@ -25,6 +25,9 @@ public final class RegisterActivity extends com.jinxin.unlockhub.ui.BaseActivity
     private EditText nicknameInput;
     private EditText passwordInput;
     private EditText loginNicknameInput;
+    private EditText emailInput;
+    private EditText loginEmailInput;
+    private LinearLayout loginEmailRow;
     private EditText loginPasswordInput;
     private EditText backendInput;
     private TextView statusText;
@@ -80,6 +83,13 @@ public final class RegisterActivity extends com.jinxin.unlockhub.ui.BaseActivity
         registerCard.addView(nicknameInput);
         registerCard.addView(AppUi.label(this, getString(R.string.reg_label_password)));
         registerCard.addView(passwordInput);
+        emailInput = AppUi.input(this, getString(R.string.reg_hint_email));
+        emailInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        registerCard.addView(AppUi.label(this, getString(R.string.reg_label_email)));
+        registerCard.addView(emailInput);
+        TextView emailHint = AppUi.body(this, getString(R.string.reg_email_hint));
+        emailHint.setTextSize(12);
+        registerCard.addView(emailHint);
         Button registerButton = AppUi.primaryButton(this, getString(R.string.reg_button));
         registerButton.setOnClickListener(v -> registerAccount());
         registerCard.addView(registerButton);
@@ -93,6 +103,15 @@ public final class RegisterActivity extends com.jinxin.unlockhub.ui.BaseActivity
         loginPasswordInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         loginCard.addView(AppUi.label(this, getString(R.string.reg_label_password)));
         loginCard.addView(loginPasswordInput);
+        // 仅在「昵称+密码」撞号时展开，让用户补填注册邮箱来区分账号。
+        loginEmailRow = new LinearLayout(this);
+        loginEmailRow.setOrientation(LinearLayout.VERTICAL);
+        loginEmailRow.setVisibility(android.view.View.GONE);
+        loginEmailInput = AppUi.input(this, getString(R.string.reg_hint_email));
+        loginEmailInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        loginEmailRow.addView(AppUi.label(this, getString(R.string.reg_label_email)));
+        loginEmailRow.addView(loginEmailInput);
+        loginCard.addView(loginEmailRow);
         Button loginButton = AppUi.secondaryButton(this, getString(R.string.reg_login_button));
         loginButton.setOnClickListener(v -> loginAccount());
         loginCard.addView(loginButton);
@@ -105,13 +124,18 @@ public final class RegisterActivity extends com.jinxin.unlockhub.ui.BaseActivity
         saveBackend();
         String nickname = nicknameInput.getText().toString().trim();
         String password = passwordInput.getText().toString();
+        String email = emailInput.getText().toString().trim();
         if (nickname.isEmpty() || password.length() < 6) {
             setStatus(getString(R.string.reg_invalid));
             return;
         }
+        if (email.isEmpty()) {
+            setStatus(getString(R.string.reg_need_email));
+            return;
+        }
         executor.execute(() -> {
             try {
-                ApiClient.Account account = new ApiClient(this).registerAccount(nickname, password);
+                ApiClient.Account account = new ApiClient(this).registerAccount(nickname, password, email);
                 bindAccount(account, password);
                 runOnUiThread(() -> {
                     com.jinxin.unlockhub.util.ShareActions.copyShareGuide(RegisterActivity.this);
@@ -132,13 +156,21 @@ public final class RegisterActivity extends com.jinxin.unlockhub.ui.BaseActivity
             setStatus(getString(R.string.reg_need_both));
             return;
         }
+        String email = loginEmailInput == null ? "" : loginEmailInput.getText().toString().trim();
         executor.execute(() -> {
             try {
-                ApiClient.Account account = new ApiClient(this).loginAccount(nickname, password);
+                ApiClient.Account account = new ApiClient(this).loginAccount(nickname, password, email);
                 bindAccount(account, password);
                 runOnUiThread(this::openHome);
             } catch (Exception e) {
-                runOnUiThread(() -> setStatus(getString(R.string.reg_login_fail, e.getMessage())));
+                final String message = e.getMessage() == null ? "" : e.getMessage();
+                runOnUiThread(() -> {
+                    // 服务端提示需要邮箱区分账号时，展开邮箱输入让用户补填后重试。
+                    if (message.contains("邮箱") || message.toLowerCase().contains("email")) {
+                        loginEmailRow.setVisibility(android.view.View.VISIBLE);
+                    }
+                    setStatus(getString(R.string.reg_login_fail, message));
+                });
             }
         });
     }

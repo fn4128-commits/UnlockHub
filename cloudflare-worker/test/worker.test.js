@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { addOwnerViewer, changeLocalAccountPassword, eligibleReportWeek, getReceiverSummary, handleCustomAlert, handleInactivityAlert, handleMemoSync, handleTestWeeklyReport, handleUnlockEvent, inboxPage, listMessagesForViewer, loginLocalAccount, markMessageReadForViewer, recoverViewerUid, registerLocalAccount, route, runInactivityMonitor } from "../src/worker.js";
+import { addOwnerViewer, changeLocalAccountPassword, listMessages, eligibleReportWeek, getReceiverSummary, handleCustomAlert, handleInactivityAlert, handleTestWeeklyReport, handleUnlockEvent, inboxPage, listMessagesForViewer, loginLocalAccount, markMessageReadForViewer, recoverViewerUid, registerLocalAccount, route, runInactivityMonitor } from "../src/worker.js";
 
 test("eligibleReportWeek uses current week on Sunday", () => {
   const result = eligibleReportWeek(new Date("2026-06-07T00:00:00.000Z"));
@@ -45,7 +45,7 @@ test("login page accepts uid and password", async () => {
 
 test("local registration creates uid and protects status with password", async () => {
   const db = new MemoryD1();
-  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+  const account = await registerLocalAccount(db, { nickname: "Alex", email: "t@example.com", password: "secret1234" });
 
   assert.match(account.publicId, /^SP-/);
   assert.equal(account.nickname, "Alex");
@@ -68,8 +68,8 @@ test("local registration creates uid and protects status with password", async (
 
 test("two users can register independently with different uids", async () => {
   const db = new MemoryD1();
-  const first = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
-  const second = await registerLocalAccount(db, { nickname: "Jordan", password: "secret2345" });
+  const first = await registerLocalAccount(db, { nickname: "Alex", email: "t@example.com", password: "secret1234" });
+  const second = await registerLocalAccount(db, { nickname: "Jordan", email: "t@example.com", password: "secret2345" });
 
   assert.notEqual(first.publicId, second.publicId);
   assert.equal(first.nickname, "Alex");
@@ -78,7 +78,7 @@ test("two users can register independently with different uids", async () => {
 
 test("registered accounts require password to sync unlock events", async () => {
   const db = new MemoryD1();
-  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+  const account = await registerLocalAccount(db, { nickname: "Alex", email: "t@example.com", password: "secret1234" });
 
   await assert.rejects(
     () =>
@@ -107,7 +107,7 @@ test("registered accounts require password to sync unlock events", async () => {
 
 test("summary includes owner nickname for registered accounts", async () => {
   const db = new MemoryD1();
-  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+  const account = await registerLocalAccount(db, { nickname: "Alex", email: "t@example.com", password: "secret1234" });
   await handleUnlockEvent(db, {
     deviceId: "device-1",
     displayName: "Alex",
@@ -123,7 +123,7 @@ test("summary includes owner nickname for registered accounts", async () => {
 
 test("change password updates auth for viewing and profile page exists", async () => {
   const db = new MemoryD1();
-  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+  const account = await registerLocalAccount(db, { nickname: "Alex", email: "t@example.com", password: "secret1234" });
   await changeLocalAccountPassword(db, {
     publicId: account.publicId,
     currentPassword: "secret1234",
@@ -151,7 +151,7 @@ test("change password updates auth for viewing and profile page exists", async (
 
 test("local login verifies uid and password", async () => {
   const db = new MemoryD1();
-  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+  const account = await registerLocalAccount(db, { nickname: "Alex", email: "t@example.com", password: "secret1234" });
   const loggedIn = await loginLocalAccount(db, { publicId: account.publicId, password: "secret1234" });
 
   assert.equal(loggedIn.publicId, account.publicId);
@@ -169,26 +169,45 @@ test("local login verifies uid and password", async () => {
   );
 });
 
-test("recover uid matches viewer nickname, owner nickname and password", async () => {
+test("recover uid verifies password + peer + email and delivers to the peer", async () => {
   const db = new MemoryD1();
-  const owner = await registerLocalAccount(db, { nickname: "儿子", password: "secret1234", role: "owner" });
-  const mom = await registerLocalAccount(db, { nickname: "妈妈", password: "secret2345", role: "viewer" });
+  const owner = await registerLocalAccount(db, { nickname: "儿子", email: "son@example.com", password: "secret1234", role: "owner" });
+  const mom = await registerLocalAccount(db, { nickname: "妈妈", email: "mom@example.com", password: "secret2345", role: "viewer" });
   await addOwnerViewer(db, owner.publicId, "妈妈");
 
+  // 用密码 + 邮箱 + 同步对象找回；不需要记得自己的昵称。
   const recovered = await recoverViewerUid(db, {
-    viewerNickname: "妈妈",
-    ownerNickname: "儿子",
     password: "secret2345",
+    email: "mom@example.com",
+    peerHandle: "儿子",
   });
+  assert.equal(recovered.delivered, true);
+  assert.equal(recovered.sentTo, "儿子");
 
-  assert.equal(recovered.publicId, mom.publicId);
-  assert.equal(recovered.nickname, "妈妈");
-  assert.equal(recovered.ownerNickname, "儿子");
+  // UID 与昵称应作为消息送到同步对象（儿子）的状态页，而不是直接返回。
+  const messages = await listMessages(db, owner.publicId);
+  const recoveryMessage = messages.find((m) => m.type === "uid_recovery");
+  assert.ok(recoveryMessage, "peer should receive a recovery message");
+  assert.ok(recoveryMessage.body.includes(mom.publicId), "message should carry the UID");
+  assert.ok(recoveryMessage.body.includes("妈妈"), "message should carry the nickname");
+
+  // 邮箱不对时应失败。
+  await assert.rejects(
+    () => recoverViewerUid(db, { password: "secret2345", email: "wrong@example.com", peerHandle: "儿子" }),
+    /不匹配|not/
+  );
+
+  // 与该对象没有关联时应失败。
+  await registerLocalAccount(db, { nickname: "陌生人", email: "x@example.com", password: "secret9999", role: "viewer" });
+  await assert.rejects(
+    () => recoverViewerUid(db, { password: "secret9999", email: "x@example.com", peerHandle: "儿子" }),
+    /不匹配|not/
+  );
 });
 
 test("reinstalled app can sync with same uid on a new device id", async () => {
   const db = new MemoryD1();
-  const account = await registerLocalAccount(db, { nickname: "Alex", password: "secret1234" });
+  const account = await registerLocalAccount(db, { nickname: "Alex", email: "t@example.com", password: "secret1234" });
   const payload = {
     displayName: "Alex",
     guardianHandle: account.publicId,
@@ -272,43 +291,6 @@ test("new sync report replaces the previous one", async () => {
   assert.match(reports[0].body, /2026-06-08 至 2026-06-14/);
 });
 
-test("memo sync replaces device memos and viewers can read them", async () => {
-  const db = new MemoryD1();
-  const viewer = await registerLocalAccount(db, { nickname: "妈妈", password: "secret2345", role: "viewer" });
-  await addOwnerViewer(db, "mom", "妈妈");
-
-  const first = await handleMemoSync(db, {
-    deviceId: "device-1",
-    guardianHandle: "mom",
-    memos: [
-      { clientId: 1, title: "买菜", type: "text", content: "土豆、西红柿", updatedAt: 100 },
-      { clientId: 2, title: "作业", type: "checklist", content: '[{"t":"数学","d":true}]', pinned: true, updatedAt: 200 },
-    ],
-  });
-  assert.equal(first.ok, true);
-  assert.equal(first.synced, 2);
-
-  const response = await route(
-    new Request(
-      `https://safe.example/api/memos?syncId=mom&viewerId=${viewer.publicId}&viewerPassword=secret2345`
-    ),
-    { DB: db }
-  );
-  const payload = await response.json();
-  assert.equal(response.status, 200);
-  assert.equal(payload.memos.length, 2);
-  assert.equal(payload.memos[0].title, "作业"); // 置顶在前
-
-  // 再次全量同步只带一条 → 服务器整体替换
-  const second = await handleMemoSync(db, {
-    deviceId: "device-1",
-    guardianHandle: "mom",
-    memos: [{ clientId: 1, title: "买菜", type: "text", content: "只剩土豆", updatedAt: 300 }],
-  });
-  assert.equal(second.synced, 1);
-  assert.equal((db.memos || []).length, 1);
-  assert.equal(db.memos[0].content, "只剩土豆");
-});
 
 test("custom alerts create a message for the guardian", async () => {
   const db = new MemoryD1();
@@ -324,30 +306,7 @@ test("custom alerts create a message for the guardian", async () => {
   assert.equal(db.messages[0].body, "已到家，勿念");
 });
 
-test("memo list requires viewer allowlist", async () => {
-  const db = new MemoryD1();
-  const outsider = await registerLocalAccount(db, { nickname: "路人", password: "secret3456", role: "viewer" });
-  await handleMemoSync(db, {
-    deviceId: "device-1",
-    guardianHandle: "mom",
-    memos: [{ clientId: 1, title: "秘密", type: "text", content: "x" }],
-  });
-  await assert.rejects(
-    route(
-      new Request(
-        `https://safe.example/api/memos?syncId=mom&viewerId=${outsider.publicId}&viewerPassword=secret3456`
-      ),
-      { DB: db }
-    ),
-    /查看名单/
-  );
-});
 
-test("inbox page renders memo section", () => {
-  const page = inboxPage();
-  assert.match(page, /renderMemosHtml/);
-  assert.match(page, /api\/memos/);
-});
 
 test("inactivity alerts are deduplicated", async () => {
   const db = new MemoryD1();
@@ -390,7 +349,7 @@ test("scheduled monitor creates alert when cloud sees 72 hours of silence", asyn
 
 test("route returns receiver messages for allowed viewers", async () => {
   const db = new MemoryD1();
-  const viewer = await registerLocalAccount(db, { nickname: "妈妈", password: "secret2345", role: "viewer" });
+  const viewer = await registerLocalAccount(db, { nickname: "妈妈", email: "t@example.com", password: "secret2345", role: "viewer" });
   await addOwnerViewer(db, "mom", "妈妈");
   await handleInactivityAlert(db, {
     deviceId: "device-1",
@@ -462,8 +421,8 @@ test("summary reports active and inactive states", async () => {
 
 test("viewer must be on allowlist to read messages", async () => {
   const db = new MemoryD1();
-  const owner = await registerLocalAccount(db, { nickname: "儿子", password: "secret1234", role: "owner" });
-  const viewer = await registerLocalAccount(db, { nickname: "妈妈", password: "secret2345", role: "viewer" });
+  const owner = await registerLocalAccount(db, { nickname: "儿子", email: "t@example.com", password: "secret1234", role: "owner" });
+  const viewer = await registerLocalAccount(db, { nickname: "妈妈", email: "t@example.com", password: "secret2345", role: "viewer" });
   await handleUnlockEvent(db, {
     deviceId: "device-1",
     displayName: "儿子",
@@ -497,8 +456,8 @@ test("viewer must be on allowlist to read messages", async () => {
 
 test("viewer read status is tracked per nickname", async () => {
   const db = new MemoryD1();
-  const owner = await registerLocalAccount(db, { nickname: "儿子", password: "secret1234", role: "owner" });
-  const mom = await registerLocalAccount(db, { nickname: "妈妈", password: "secret2345", role: "viewer" });
+  const owner = await registerLocalAccount(db, { nickname: "儿子", email: "t@example.com", password: "secret1234", role: "owner" });
+  const mom = await registerLocalAccount(db, { nickname: "妈妈", email: "t@example.com", password: "secret2345", role: "viewer" });
   await addOwnerViewer(db, owner.publicId, "妈妈");
 
   await handleUnlockEvent(db, {
@@ -751,6 +710,7 @@ class Statement {
         password_salt: values[2],
         password_hash: values[3],
         account_role: values[4] || "owner",
+        email: values[5] || "",
       });
       return { meta: {} };
     }
@@ -1007,6 +967,13 @@ class Statement {
       const account = this.db.localAccounts.get(values[0]);
       return account || null;
     }
+    if (sql.includes("FROM local_accounts") && sql.includes("lower(nickname) = lower(?1)")) {
+      const wanted = String(values[0] || "").toLowerCase();
+      const rows = Array.from(this.db.localAccounts.values())
+        .filter((a) => String(a.nickname || "").toLowerCase() === wanted)
+        .filter((a) => (sql.includes("account_role = 'owner'") ? (a.account_role || "owner") === "owner" : true));
+      return rows[0] || null;
+    }
     if (sql.startsWith("SELECT id, public_id FROM accounts")) {
       return Array.from(this.db.accounts.values()).find((account) => account.google_sub === values[0]) || null;
     }
@@ -1024,6 +991,12 @@ class Statement {
   async all() {
     const sql = this.sql;
     const values = this.values;
+    if (sql.includes("FROM local_accounts") && sql.includes("lower(email) = lower(?1)")) {
+      const wanted = String(values[0] || "").toLowerCase();
+      const results = Array.from(this.db.localAccounts.values())
+        .filter((a) => String(a.email || "").toLowerCase() === wanted);
+      return { results };
+    }
     if (
       sql.startsWith("SELECT local_date, first_unlock_at FROM unlock_events") &&
       sql.includes("ORDER BY local_date ASC") &&

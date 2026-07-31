@@ -10,9 +10,15 @@ export default {
       return await route(request, env);
     } catch (error) {
       const status = error instanceof TooManyRequests ? 429
+        : error instanceof EmailRequired ? 409
         : error instanceof BadRequest ? 400
         : 500;
-      return json({ error: error.message || "Internal error" }, status);
+      // needEmail 让前端知道要补填邮箱来区分同名同密码的账号。
+      const body = { error: error.message || "Internal error" };
+      if (error instanceof EmailRequired) {
+        body.needEmail = true;
+      }
+      return json(body, status);
     }
   },
   async scheduled(controller, env) {
@@ -212,27 +218,6 @@ export async function route(request, env) {
     const payload = await readJson(request);
     const result = await handleCustomAlert(env.DB, payload);
     return json(result);
-  }
-
-  if (request.method === "POST" && url.pathname === "/api/memos/sync") {
-    const payload = await readJson(request);
-    const result = await handleMemoSync(env.DB, payload);
-    return json(result);
-  }
-
-  if (request.method === "GET" && url.pathname === "/api/memos") {
-    const ownerHandle = syncIdFromUrl(url).trim();
-    if (!ownerHandle) {
-      throw new BadRequest("syncId is required");
-    }
-    const ownerView = url.searchParams.get("ownerView") === "1";
-    if (ownerView) {
-      await requireReceiverAccess(env.DB, ownerHandle, accessPasswordFrom(request, url).trim());
-    } else {
-      await requireViewerViewAccess(env.DB, ownerHandle, viewAuthFrom(request, url));
-    }
-    const memos = await listSyncedMemos(env.DB, ownerHandle);
-    return json({ memos });
   }
 
   if (request.method === "POST" && url.pathname === "/api/test-weekly-report") {
@@ -613,63 +598,7 @@ export async function handleCustomAlert(db, payload) {
 /**
  * 全量同步：App 每次上传全部非私密备忘，服务端以 device_id 维度整体替换。
  */
-export async function handleMemoSync(db, payload) {
-  requireFields(payload, ["deviceId", "guardianHandle"]);
 
-  const deviceId = String(payload.deviceId);
-  const guardianHandle = String(payload.guardianHandle);
-  const receiverAccessKey = payload.receiverAccessKey ? String(payload.receiverAccessKey) : "";
-  await requireSyncAccess(db, guardianHandle, receiverAccessKey);
-  await ensureReceiverKey(db, guardianHandle, receiverAccessKey);
-
-  const memos = Array.isArray(payload.memos) ? payload.memos : [];
-  if (memos.length > 500) {
-    throw new BadRequest("Too many memos in one sync (max 500)");
-  }
-
-  await db.prepare("DELETE FROM memos WHERE device_id = ?1").bind(deviceId).run();
-  let synced = 0;
-  for (const memo of memos) {
-    const clientId = Number(memo.clientId);
-    if (!Number.isFinite(clientId) || clientId <= 0) {
-      continue;
-    }
-    await db
-      .prepare(
-        `INSERT INTO memos(device_id, guardian_handle, client_id, title, content, type, memo_date, pinned, done, updated_at)
-         VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`
-      )
-      .bind(
-        deviceId,
-        guardianHandle,
-        clientId,
-        String(memo.title || "").slice(0, 200),
-        String(memo.content || "").slice(0, 4000),
-        memo.type === "checklist" ? "checklist" : "text",
-        String(memo.memoDate || "").slice(0, 10),
-        memo.pinned ? 1 : 0,
-        memo.done ? 1 : 0,
-        Number(memo.updatedAt) || 0
-      )
-      .run();
-    synced += 1;
-  }
-  return { ok: true, synced };
-}
-
-export async function listSyncedMemos(db, guardianHandle) {
-  const result = await db
-    .prepare(
-      `SELECT client_id, title, content, type, memo_date, pinned, done, updated_at
-       FROM memos
-       WHERE guardian_handle = ?1
-       ORDER BY pinned DESC, done ASC, updated_at DESC
-       LIMIT 200`
-    )
-    .bind(guardianHandle)
-    .all();
-  return result.results || [];
-}
 
 export async function maybeCreateWeeklyReport(db, deviceId, displayName, guardianHandle, localDate) {
   const settings = await loadUserSyncSettings(db, deviceId);
@@ -1486,11 +1415,16 @@ export async function requireSyncAccess(db, guardianHandle, accessKey) {
 export async function registerLocalAccount(db, payload) {
   const nickname = String(payload.nickname || "").trim();
   const password = String(payload.password || "");
+  // 邮箱只用于「同名同密码」时区分是哪个账号，不验证真实性、不发送任何邮件。
+  const email = normalizeEmail(payload.email || "");
   if (!nickname) {
     throw new BadRequest("Nickname is required");
   }
   if (password.length < 8) {
     throw new BadRequest("Password must be at least 8 characters");
+  }
+  if (!email) {
+    throw new BadRequest("Email is required");
   }
 
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -1501,10 +1435,10 @@ export async function registerLocalAccount(db, payload) {
       const accountRole = payload.role === "viewer" ? "viewer" : "owner";
       await db
         .prepare(
-          `INSERT INTO local_accounts(public_id, nickname, password_salt, password_hash, account_role)
-           VALUES(?1, ?2, ?3, ?4, ?5)`
+          `INSERT INTO local_accounts(public_id, nickname, password_salt, password_hash, account_role, email)
+           VALUES(?1, ?2, ?3, ?4, ?5, ?6)`
         )
-        .bind(publicId, nickname, salt, hash, accountRole)
+        .bind(publicId, nickname, salt, hash, accountRole, email)
         .run();
       return { publicId, nickname, role: accountRole };
     } catch (error) {
@@ -1529,7 +1463,7 @@ export async function loginLocalAccount(db, payload) {
       account = null;
     }
   } else if (nickname) {
-    account = await findLocalAccountForNicknameLogin(db, nickname, password);
+    account = await findLocalAccountForNicknameLogin(db, nickname, password, payload.email || "");
   } else {
     throw new BadRequest("UID is required");
   }
@@ -1541,40 +1475,84 @@ export async function loginLocalAccount(db, payload) {
 }
 
 export async function recoverViewerUid(db, payload) {
-  const viewerNickname = normalizeNickname(payload.viewerNickname || payload.nickname || "");
-  const ownerNickname = normalizeNickname(payload.ownerNickname || payload.childNickname || "");
+  // 三方验证：密码 + 任意同步对象 + 邮箱。不要求记得自己的昵称或 UID。
+  // 结果不直接返回给请求者，而是作为一条消息发到「同步对象」的状态页——
+  // 这样即便有人猜中密码与邮箱，也拿不到 UID，只有真正的关联方能看到。
   const password = String(payload.password || "");
-  if (!viewerNickname) {
-    throw new BadRequest("请填写您的昵称");
-  }
-  if (!ownerNickname) {
-    throw new BadRequest("请填写孩子的昵称");
-  }
+  const email = normalizeEmail(payload.email || "");
+  const peerHandle = String(payload.peerHandle || payload.ownerNickname || payload.childNickname || "").trim();
   if (!password) {
     throw new BadRequest("请填写密码");
   }
-
-  const viewer = await findLocalAccountForNicknameLogin(db, viewerNickname, password);
-  if (!viewer) {
-    throw new BadRequest("昵称或密码不正确");
+  if (!email) {
+    throw new BadRequest("请填写注册时的邮箱");
   }
-  if ((viewer.account_role || "owner") !== "viewer") {
-    throw new BadRequest("请使用网页注册的查看账号");
+  if (!peerHandle) {
+    throw new BadRequest("请填写一位同步对象的昵称或 UID");
   }
 
-  const owner = await findOwnerAccountByNickname(db, ownerNickname);
-  if (!owner) {
-    throw new BadRequest("未找到对应的孩子账号，请确认孩子昵称");
+  // 同步对象：可用 UID 或昵称指定。
+  let peer = await getLocalAccount(db, peerHandle.toUpperCase());
+  if (!peer) {
+    peer = await db
+      .prepare(
+        `SELECT public_id, nickname, account_role
+         FROM local_accounts
+         WHERE lower(nickname) = lower(?1)`
+      )
+      .bind(peerHandle)
+      .first();
   }
-  if (!(await isViewerAllowed(db, owner.public_id, viewer.nickname))) {
-    throw new BadRequest("您的昵称未在对方的查看名单中，请联系孩子在手机端添加");
+  if (!peer) {
+    throw new BadRequest("未找到该同步对象，请确认对方的昵称或 UID");
   }
+
+  // 在「邮箱 + 密码」都匹配的账号里，找出与该同步对象确实有关联的那个。
+  const candidates = await db
+    .prepare(
+      `SELECT public_id, nickname, password_salt, password_hash, account_role, email
+       FROM local_accounts
+       WHERE lower(email) = lower(?1)`
+    )
+    .bind(email)
+    .all();
+  const rows = candidates.results || [];
+  const matched = [];
+  for (const row of rows) {
+    if (!(await verifyPassword(password, row.password_salt, row.password_hash))) {
+      continue;
+    }
+    // 关联判定：我在对方的查看名单里，或对方在我的查看名单里。
+    const iCanViewPeer = await isViewerAllowed(db, peer.public_id, row.nickname);
+    const peerCanViewMe = await isViewerAllowed(db, row.public_id, peer.nickname);
+    if (iCanViewPeer || peerCanViewMe) {
+      matched.push(row);
+    }
+  }
+  if (!matched.length) {
+    throw new BadRequest("信息不匹配：请确认密码、邮箱，以及该同步对象与你确有关联");
+  }
+  if (matched.length > 1) {
+    throw new BadRequest("匹配到多个账号，请联系对方确认");
+  }
+
+  const me = matched[0];
+  // 把 UID 与昵称发到同步对象的状态页（带外送达，请求者本人看不到内容）。
+  await createMessage(db, {
+    recipientHandle: peer.public_id,
+    senderDeviceId: "system-recovery",
+    senderDisplayName: me.nickname,
+    type: "uid_recovery",
+    title: "UID 找回请求",
+    body:
+      `${me.nickname} 请求找回自己的账号信息，已核对密码与邮箱。\n\n` +
+      `UID：${me.public_id}\n昵称：${me.nickname}\n\n` +
+      `若确认是本人，请把上面的 UID 与昵称转告对方；若并非本人发起，请忽略并提醒对方尽快修改密码。`,
+  });
 
   return {
-    publicId: viewer.public_id,
-    nickname: viewer.nickname,
-    ownerNickname: owner.nickname,
-    role: viewer.account_role || "viewer",
+    sentTo: peer.nickname,
+    delivered: true,
   };
 }
 
@@ -1590,10 +1568,10 @@ async function findOwnerAccountByNickname(db, nickname) {
     .first();
 }
 
-async function findLocalAccountForNicknameLogin(db, nickname, password) {
+async function findLocalAccountForNicknameLogin(db, nickname, password, email = "") {
   const result = await db
     .prepare(
-      `SELECT public_id, nickname, password_salt, password_hash, account_role
+      `SELECT public_id, nickname, password_salt, password_hash, account_role, email
        FROM local_accounts
        WHERE lower(nickname) = lower(?1)`
     )
@@ -1613,9 +1591,26 @@ async function findLocalAccountForNicknameLogin(db, nickname, password) {
     return matches[0];
   }
   if (matches.length > 1) {
-    throw new BadRequest("该昵称对应多个账号，请联系对方确认");
+    // 同名且同密码：用注册时填的邮箱区分是哪个账号（邮箱不验证真实性，仅作凭据）。
+    const wanted = normalizeEmail(email);
+    if (!wanted) {
+      throw new EmailRequired("该昵称对应多个账号，请补充注册时填写的邮箱");
+    }
+    const byEmail = matches.filter((a) => normalizeEmail(a.email || "") === wanted);
+    if (byEmail.length === 1) {
+      return byEmail[0];
+    }
+    if (byEmail.length > 1) {
+      throw new BadRequest("该昵称对应多个账号，请联系对方确认");
+    }
+    return null;
   }
   return null;
+}
+
+/** 邮箱规范化：去空白 + 转小写。不做格式强校验，也从不发送邮件。 */
+function normalizeEmail(value) {
+  return String(value || "").trim().toLowerCase();
 }
 
 export async function changeLocalAccountPassword(db, payload) {
@@ -1800,9 +1795,8 @@ async function verifyViewerCredentials(db, viewerPublicId, password) {
   if (!account || !(await verifyPassword(password, account.password_salt, account.password_hash))) {
     throw new BadRequest("查看账号 UID 或密码不正确");
   }
-  if ((account.account_role || "owner") !== "viewer") {
-    throw new BadRequest("请使用网页注册的查看账号登录");
-  }
+  // 不再限制角色：手机端注册(owner)与网页注册(viewer)的账号都能查看别人，
+  // 真正的访问控制在下面——对方必须把你的昵称加进查看名单。
   return {
     publicId: account.public_id,
     nickname: account.nickname,
@@ -1902,6 +1896,16 @@ function getCookie(request, name) {
     }
   }
   return "";
+}
+
+/** 需要补充邮箱来区分同名同密码账号（HTTP 409，前端据此提示补填）。 */
+class EmailRequired extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "EmailRequired";
+    this.status = 409;
+    this.needEmail = true;
+  }
 }
 
 class BadRequest extends Error {}
@@ -2076,6 +2080,9 @@ function registerPage() {
       <input id="password" placeholder="至少 8 位" type="password" autocomplete="new-password">
       <label>确认密码</label>
       <input id="confirmPassword" placeholder="再次输入密码" type="password" autocomplete="new-password">
+      <label>电子邮箱</label>
+      <input id="email" placeholder="例如：me@example.com" autocomplete="email">
+      <p class="hint">仅在「昵称和密码都与他人相同」时用来区分账号。我们不会验证它，也不会发送任何邮件。</p>
       <button class="button" id="register">注册并登录</button>
     </div>
     <p class="sub">已有账号？<a href="/login">登录</a></p>
@@ -2101,6 +2108,12 @@ function registerPage() {
         return;
       }
       result.style.display = 'block';
+      const emailInput = document.getElementById('email');
+      if (!emailInput.value.trim()) {
+        result.style.display = 'block';
+        result.textContent = '请填写电子邮箱（用于区分同名同密码的账号）。';
+        return;
+      }
       result.textContent = '正在注册...';
       try {
         const response = await fetch('/api/register', {
@@ -2109,6 +2122,7 @@ function registerPage() {
           body: JSON.stringify({
             nickname: nicknameInput.value.trim(),
             password: passwordInput.value,
+            email: emailInput.value.trim(),
             role: 'viewer'
           })
         });
@@ -2139,10 +2153,15 @@ function loginPage() {
       <div class="auth-corner"><a href="/register">注册</a> · <a href="/">查询页</a></div>
     </div>
     <form class="card" id="loginForm" autocomplete="on" onsubmit="return false;">
-      <label for="uid">我的 UID</label>
-      <input id="uid" name="username" placeholder="例如：SP-ABCD-1234" autocomplete="username">
+      <label for="uid">昵称</label>
+      <input id="uid" name="username" placeholder="例如：妈妈" autocomplete="username">
       <label for="password">密码</label>
       <input id="password" name="password" placeholder="注册时设置的密码" type="password" autocomplete="current-password">
+      <div id="emailRow" style="display:none">
+        <label for="email">电子邮箱</label>
+        <input id="email" name="email" placeholder="注册时填写的邮箱" autocomplete="email">
+        <p class="hint">有多个账号使用了相同的昵称和密码，请补充注册时填写的邮箱。</p>
+      </div>
       <button class="button" id="login" type="submit">登录</button>
     </form>
     <p class="sub">还没有账号？<a href="/register">注册查看账号</a> · <a href="/forgot-uid">忘记 UID？</a></p>
@@ -2162,19 +2181,23 @@ function loginPage() {
       result.style.display = 'block';
       result.textContent = '正在登录...';
       try {
+        const emailInput = document.getElementById('email');
         const response = await fetch('/api/login', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            publicId: uidInput.value.trim(),
-            password: passwordInput.value
+            nickname: uidInput.value.trim(),
+            password: passwordInput.value,
+            email: emailInput ? emailInput.value.trim() : ''
           })
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || '登录失败');
-        if (data.account.role && data.account.role !== 'viewer') {
-          throw new Error('请使用网页注册的查看账号登录');
+        if (response.status === 409 && data.needEmail) {
+          // 同名同密码：展开邮箱输入让用户补填后重试。
+          document.getElementById('emailRow').style.display = 'block';
+          throw new Error(data.error || '请补充注册时填写的邮箱');
         }
+        if (!response.ok) throw new Error(data.error || '登录失败');
         saveCredentials(data.account.publicId, passwordInput.value, data.account.nickname);
         location.href = '/' + (querySyncId ? '?syncId=' + encodeURIComponent(querySyncId) : '');
       } catch (error) {
@@ -2195,18 +2218,18 @@ function forgotUidPage() {
 <body>
   <main>
     <div class="page-top">
-      ${brandHeader("找回 UID", "填写您的昵称、孩子的昵称和密码。系统会核对三方信息后返回您的 UID。")}
+      ${brandHeader("找回账号", "填写密码、邮箱和任意一位同步对象。核对通过后，你的 UID 与昵称会发送到该同步对象的状态页。")}
       <div class="auth-corner"><a href="/login">返回登录</a></div>
     </div>
     <div class="card">
-      <label for="viewerNickname">您的昵称</label>
-      <input id="viewerNickname" placeholder="例如：妈妈" autocomplete="nickname">
-      <label for="ownerNickname">孩子的昵称</label>
-      <input id="ownerNickname" placeholder="孩子手机端注册时填写的昵称" autocomplete="off">
-      <p class="hint">孩子的昵称用于确认您要查看的是谁的状态。找回后，孩子也可在手机端「查看人昵称」列表中看到您的 UID 并复制分享。</p>
       <label for="password">密码</label>
       <input id="password" placeholder="注册时设置的密码" type="password" autocomplete="current-password">
-      <button class="button" id="recover" type="button">找回 UID</button>
+      <label for="email">电子邮箱</label>
+      <input id="email" placeholder="注册时填写的邮箱" autocomplete="email">
+      <label for="peerHandle">同步对象（昵称或 UID）</label>
+      <input id="peerHandle" placeholder="例如：妈妈 或 SP-ABCD-1234" autocomplete="off">
+      <p class="hint">同步对象＝已与你互相关联的一方。为安全起见，结果不会显示在本页，而是发送到该对象的状态页，请向对方索取。</p>
+      <button class="button" id="recover" type="button">发送找回信息</button>
     </div>
     <div id="result" class="card" style="display:none"></div>
   </main>
@@ -2222,18 +2245,16 @@ function forgotUidPage() {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            viewerNickname: document.getElementById('viewerNickname').value.trim(),
-            ownerNickname: document.getElementById('ownerNickname').value.trim(),
-            password: document.getElementById('password').value
+            password: document.getElementById('password').value,
+            email: document.getElementById('email').value.trim(),
+            peerHandle: document.getElementById('peerHandle').value.trim()
           })
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || '找回失败');
-        saveCredentials(data.account.publicId, document.getElementById('password').value, data.account.nickname);
-        result.innerHTML = '<h2>找回成功</h2><pre>您的 UID：' + escapeHtml(data.account.publicId) +
-          '\\n昵称：' + escapeHtml(data.account.nickname) +
-          '\\n孩子：' + escapeHtml(data.account.ownerNickname || '') +
-          '</pre><p class="sub"><a href="/login">去登录</a> · <a href="/">去查询页</a></p>';
+        result.innerHTML = '<h2>已发送</h2><pre>你的 UID 与昵称已发送到「' + escapeHtml(data.sentTo || '') +
+          '」的状态页。\\n请联系对方查看并转告你。</pre>' +
+          '<p class="sub"><a href="/login">去登录</a> · <a href="/">去查询页</a></p>';
       } catch (error) {
         result.textContent = error.message;
       }
@@ -2851,33 +2872,30 @@ export function inboxPage() {
       try {
         const query = viewerQuery(handle);
         const headers = viewerHeaders();
-        const [summaryResponse, messageResponse, eventResponse, memoResponse] = await Promise.all([
+        const [summaryResponse, messageResponse, eventResponse] = await Promise.all([
           fetch('/api/summary?' + query, { headers }),
           fetch('/api/messages?' + query, { headers }),
-          fetch('/api/unlock-events?' + query, { headers }),
-          fetch('/api/memos?' + query, { headers })
+          fetch('/api/unlock-events?' + query, { headers })
         ]);
         const summaryData = await summaryResponse.json();
         const messageData = await messageResponse.json();
         const eventData = await eventResponse.json();
-        const memoData = memoResponse.ok ? await memoResponse.json() : { memos: [] };
         if (!summaryResponse.ok) throw new Error(summaryData.error || '读取摘要失败');
         if (!messageResponse.ok) throw new Error(messageData.error || '读取消息失败');
         if (!eventResponse.ok) throw new Error(eventData.error || '读取记录失败');
         const messageItems = messageData.messages || [];
-        const memoItems = memoData.memos || [];
-        renderInbox(summaryData.summary, messageItems, eventData.events || [], saved.nickname, memoItems);
+        renderInbox(summaryData.summary, messageItems, eventData.events || [], saved.nickname);
         markVisibleMessagesRead(handle, messageItems);
-        status.textContent = '以「' + (saved.nickname || saved.uid) + '」查看 · 共 ' + messageItems.length + ' 条消息，' + (eventData.events || []).length + ' 条解锁记录，' + memoItems.length + ' 条备忘';
+        status.textContent = '以「' + (saved.nickname || saved.uid) + '」查看 · 共 ' + messageItems.length + ' 条消息，' + (eventData.events || []).length + ' 条解锁记录';
       } catch (error) {
         status.textContent = error.message;
       }
     }
-    function renderInbox(summary, messageItems, eventItems, viewerNickname, memoItems) {
+    function renderInbox(summary, messageItems, eventItems, viewerNickname) {
       const summaryHtml = renderSummary(summary, viewerNickname);
       const statusHtml = renderStatusPeriods(summary);
       const visibleMessages = (messageItems || []).filter(item => item.type !== 'weekly_report');
-      messages.innerHTML = summaryHtml + statusHtml + renderMemosHtml(memoItems || []) + renderMessagesHtml(visibleMessages);
+      messages.innerHTML = summaryHtml + statusHtml + renderMessagesHtml(visibleMessages);
     }
     function renderStatusPeriods(summary) {
       const periods = (summary && summary.statusPeriods) || [];
@@ -2912,34 +2930,6 @@ export function inboxPage() {
     }
     function md(dateStr) {
       return String(dateStr).slice(5); // 'YYYY-MM-DD' -> 'MM-DD'
-    }
-    function renderMemosHtml(items) {
-      if (!items.length) return '';
-      const cards = items.map(item => {
-        const badges = [];
-        if (item.pinned) badges.push('📌 置顶');
-        if (item.done) badges.push('✅ 已完成');
-        if (item.memo_date) badges.push('📅 ' + escapeHtml(item.memo_date));
-        const meta = badges.length ? '<div class="meta">' + badges.join(' · ') + '</div>' : '';
-        return '<article class="message">' +
-          '<h2>' + escapeHtml(item.title || '（无标题）') + '</h2>' +
-          meta +
-          '<pre>' + renderMemoBody(item) + '</pre>' +
-        '</article>';
-      }).join('');
-      return '<div class="message"><h2>备忘录</h2><p class="sub">对方共享的备忘（私密备忘不会同步）。</p></div>' + cards;
-    }
-    function renderMemoBody(item) {
-      if (item.type === 'checklist') {
-        try {
-          const entries = JSON.parse(item.content || '[]');
-          if (!entries.length) return '（空清单）';
-          return entries.map(entry => (entry.d ? '☑ ' : '☐ ') + escapeHtml(entry.t || '')).join('\\n');
-        } catch (error) {
-          return escapeHtml(item.content || '');
-        }
-      }
-      return escapeHtml(item.content || '');
     }
     function renderSummary(summary, viewerNickname) {
       const ownerLine = summary && summary.ownerNickname ? '对方昵称：' + escapeHtml(summary.ownerNickname) + '\\n' : '';

@@ -114,6 +114,8 @@ CREATE TABLE IF NOT EXISTS local_accounts (
   password_salt TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   account_role TEXT NOT NULL DEFAULT 'owner',
+  -- 仅用于「同名同密码」时区分账号；不验证真实性、不发邮件。
+  email TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

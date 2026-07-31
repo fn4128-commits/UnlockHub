@@ -57,11 +57,9 @@ public final class MemoActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 已读满 30 天的备忘自动删除（清理后若有删除则同步云端）。
+        // 已读满 30 天的备忘自动删除（备忘仅存本机，不上传云端）。
         try {
-            if (repository.pruneExpiredRead() > 0) {
-                com.jinxin.unlockhub.sync.MemoSync.syncAsync(this);
-            }
+            repository.pruneExpiredRead();
         } catch (Throwable ignored) {
         }
         refresh();
@@ -379,7 +377,6 @@ public final class MemoActivity extends BaseActivity {
                             return;
                     }
                     MemoNotifier.updateBadge(this);
-                    com.jinxin.unlockhub.sync.MemoSync.syncAsync(this);
                     refresh();
                 })
                 .show();
@@ -393,7 +390,6 @@ public final class MemoActivity extends BaseActivity {
                     com.jinxin.unlockhub.scheduler.MemoReminderScheduler.cancel(this, memo.id);
                     repository.delete(memo.id);
                     MemoNotifier.updateBadge(this);
-                    com.jinxin.unlockhub.sync.MemoSync.syncAsync(this);
                     refresh();
                 })
                 .setNegativeButton(getString(R.string.common_cancel), null)

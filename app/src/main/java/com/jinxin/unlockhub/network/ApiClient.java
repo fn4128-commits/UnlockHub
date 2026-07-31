@@ -61,18 +61,6 @@ public final class ApiClient {
     }
 
     /** 全量上传非私密备忘（memosJsonArray 为 JSON 数组字符串）。 */
-    public void syncMemos(String memosJsonArray) throws IOException {
-        requireAccount();
-        String body = "{" +
-                json("deviceId", Prefs.deviceId(context)) + "," +
-                json("publicId", Prefs.publicId(context)) + "," +
-                json("displayName", Prefs.displayName(context)) + "," +
-                json("guardianHandle", Prefs.guardianHandle(context)) + "," +
-                json("receiverAccessKey", Prefs.receiverAccessKey(context)) + "," +
-                "\"memos\":" + (memosJsonArray == null || memosJsonArray.isEmpty() ? "[]" : memosJsonArray) +
-                "}";
-        post("/api/memos/sync", body);
-    }
 
     public void sendTestWeeklyReport() throws IOException {
         requireAccount();
@@ -86,19 +74,26 @@ public final class ApiClient {
         post("/api/test-weekly-report", body);
     }
 
-    public Account registerAccount(String nickname, String password) throws IOException {
+    public Account registerAccount(String nickname, String password, String email) throws IOException {
         String body = "{" +
                 json("nickname", nickname) + "," +
                 json("password", password) + "," +
+                json("email", email) + "," +
                 json("role", "owner") +
                 "}";
         return accountFromJson(context, postForBody("/api/register", body));
     }
 
     public Account loginAccount(String nickname, String password) throws IOException {
+        return loginAccount(nickname, password, "");
+    }
+
+    /** email 仅在「同名同密码」冲突时需要，用于区分账号；平时传空串。 */
+    public Account loginAccount(String nickname, String password, String email) throws IOException {
         String body = "{" +
                 json("nickname", nickname) + "," +
-                json("password", password) +
+                json("password", password) + "," +
+                json("email", email) +
                 "}";
         return accountFromJson(context, postForBody("/api/login", body));
     }

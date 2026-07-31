@@ -46,13 +46,11 @@
     <string name="settings_test_popup">Test unlock popup (simulate an unlock now)</string>
     <string name="settings_test_toast">%1$d memo(s) pending · notifications %2$s</string>
     <string name="settings_perms_title">Required permissions (record on unlock)</string>
-    <string name="settings_perms_desc">Check in order: ① Notifications ② Auto-start ③ No battery restriction ④ Allow background activity. After setup, try not to swipe this app from recents, or lock its card in the recents view.</string>
+    <string name="settings_perms_desc">Check in order: ① Notifications ② Important alerts ③ No battery restriction. If a page isn\'t found, use item 4 to open App info and set it manually (auto-start and background activity live there too). After setup, try not to swipe this app from recents.</string>
     <string name="settings_perm_1">1. Allow notifications</string>
     <string name="settings_perm_2">2. Important alerts (popup, sound)</string>
-    <string name="settings_perm_3">3. Auto-start (phone manager)</string>
-    <string name="settings_perm_4">4. No battery restriction / power whitelist</string>
-    <string name="settings_perm_5">5. Allow background activity</string>
-    <string name="settings_perm_6">6. App details (if the pages above aren\'t found)</string>
+    <string name="settings_perm_3">3. No battery restriction / power whitelist</string>
+    <string name="settings_perm_4">4. App info (auto-start and other permissions here)</string>
     <string name="settings_send_test_notify">Send a test notification</string>
     <string name="settings_test_notify_sent">Test notification sent</string>
     <string name="settings_boundapp_title">Bound-app fallback</string>
@@ -245,6 +243,10 @@
     <string name="reg_fail">Registration failed: %1$s</string>
     <string name="reg_need_both">Enter your nickname and password.</string>
     <string name="reg_login_fail">Sign-in failed: %1$s</string>
+    <string name="reg_label_email">Email</string>
+    <string name="reg_hint_email">e.g. me@example.com</string>
+    <string name="reg_email_hint">Only used to tell accounts apart when the nickname and password are both identical to someone else\'s. We never verify it and never send any email.</string>
+    <string name="reg_need_email">Enter an email (used to tell apart accounts with the same nickname and password).</string>
 
     <!-- Profile -->
     <string name="pf_back">Back to home</string>

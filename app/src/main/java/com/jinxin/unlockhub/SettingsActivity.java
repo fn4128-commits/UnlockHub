@@ -270,13 +270,12 @@ public final class SettingsActivity extends BaseActivity {
 
                 SystemSettingsLauncher.openUrgentNotificationChannel(this)));
 
-        essentialCard.addView(oemButton(getString(R.string.settings_perm_3), OemSettingsLauncher::openAutostart));
+        // 只保留「后台无限制/省电白名单」与「应用详情」两个跳转：
+        // 自启动、允许后台活动这类 OEM 专用入口在不同机型上位置差异大、容易点空，
+        // 且都能从「应用详情」里找到，全列出来反而显得杂乱。
+        essentialCard.addView(oemButton(getString(R.string.settings_perm_3), OemSettingsLauncher::openBackgroundUnrestricted));
 
-        essentialCard.addView(oemButton(getString(R.string.settings_perm_4), OemSettingsLauncher::openBackgroundUnrestricted));
-
-        essentialCard.addView(oemButton(getString(R.string.settings_perm_5), OemSettingsLauncher::openBackgroundActivity));
-
-        essentialCard.addView(settingsButton(getString(R.string.settings_perm_6), () ->
+        essentialCard.addView(settingsButton(getString(R.string.settings_perm_4), () ->
 
                 SystemSettingsLauncher.openAppDetails(this)));
 
