@@ -2699,7 +2699,52 @@ function i18nScript() {
   return `<script>
 (function () {
   var DICT = {
+    // 删除账号
+    "删除账号": "Delete account",
+    "电子邮箱": "Email",
+    "注册时填写的邮箱": "The email you registered with",
+    "注册时设置的密码": "The password you set at registration",
+    "用昵称、邮箱和密码删除账号。无需登录，适用于换了设备或不记得 UID 的情况。":
+      "Delete an account with its nickname, email and password. No sign-in needed — useful if you changed phones or don't remember the UID.",
+    "注册时填写的昵称": "The nickname you registered with",
+    "账号密码": "Account password",
+    "三项都核对通过才会删除。删除后账号、签到记录、消息与查看名单将被永久移除，无法恢复。":
+      "All three must match before anything is deleted. The account, its check-in records, messages and viewer list are then removed permanently and cannot be recovered.",
+    "永久删除该账号": "Permanently delete this account",
+    "请填写昵称、邮箱与密码。": "Enter the nickname, email and password.",
+    "确定永久删除该账号吗？此操作不可恢复。": "Permanently delete this account? This cannot be undone.",
+    "已取消。": "Cancelled.",
+    "正在核对并删除...": "Verifying and deleting…",
+    "删除失败": "Delete failed",
+    "账号已删除": "Account deleted",
+    "该账号与全部记录已永久移除。": "This account and all of its records have been permanently removed.",
+    "重新注册": "Register again",
+    // 个人资料页的删除区块
+    "删除后，你的账号、签到记录、消息与查看名单将被永久移除，且无法恢复。":
+      "Deleting removes your account, check-in records, messages and viewer list permanently, with no way to recover them.",
+    "需要再次使用时请重新注册。": "Register again if you need it later.",
+    "输入密码以确认": "Enter your password to confirm",
+    "当前密码": "Current password",
+    "永久删除我的账号": "Permanently delete my account",
+    "请先登录后再删除账号。": "Sign in before deleting your account.",
+    "请输入密码以确认删除。": "Enter your password to confirm deletion.",
+    "确定永久删除账号吗？此操作不可恢复。": "Permanently delete your account? This cannot be undone.",
+    "正在删除...": "Deleting…",
+    "你的账号与全部记录已永久移除。": "Your account and all of its records have been permanently removed.",
     // 服务端 API 错误消息
+    "请提供 UID 与密码": "Provide the UID and password",
+    "请填写密码": "Enter the password",
+    "请填写昵称、邮箱与密码": "Enter the nickname, email and password",
+    "昵称、邮箱或密码不正确": "Incorrect nickname, email or password",
+    "匹配到多个账号，请登录后在个人资料中删除": "Several accounts match; sign in and delete it from your profile instead",
+    "请填写注册时的邮箱": "Enter the email you registered with",
+    "请填写一位同步对象的昵称或 UID": "Enter the nickname or UID of one synced peer",
+    "未找到该同步对象，请确认对方的昵称或 UID": "That peer was not found; check their nickname or UID",
+    "信息不匹配：请确认密码、邮箱，以及该同步对象与你确有关联": "Details don't match: check the password, the email, and that this peer is actually linked to you",
+    "匹配到多个账号，请联系对方确认": "Several accounts match; please confirm with the other person",
+    "该账号已设置邮箱": "This account already has an email",
+    "请填写电子邮箱": "Enter an email address",
+    "请先登录账号": "Sign in first",
     "该昵称已在查看名单中": "That nickname is already in the viewer list",
     "查看人不存在": "Viewer not found",
     "此 UID 尚未设置访问密钥，无法查看": "This UID has no access key set, so it cannot be viewed",
@@ -2801,8 +2846,14 @@ function i18nScript() {
     var trimmed = text.trim();
     if (!trimmed) return text;
     if (DICT[trimmed]) return text.replace(trimmed, DICT[trimmed]);
+    // 按词条长度从长到短替换：否则短词条（如「注册」）会先命中，
+    // 把长词条（如「注册时填写的邮箱」）切成中英混杂的碎片。
     var out = text;
-    for (var k in DICT) {
+    var keys = DICT.__sortedKeys || (DICT.__sortedKeys = Object.keys(DICT)
+      .filter(function (k) { return k !== '__sortedKeys'; })
+      .sort(function (a, b) { return b.length - a.length; }));
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
       if (out.indexOf(k) >= 0) out = out.split(k).join(DICT[k]);
     }
     return out;
