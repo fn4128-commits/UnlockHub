@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { addOwnerViewer, changeLocalAccountPassword, listMessages, purgeInactiveAccounts, setLocalAccountEmail, eligibleReportWeek, getReceiverSummary, handleCustomAlert, handleInactivityAlert, handleTestWeeklyReport, handleUnlockEvent, inboxPage, listMessagesForViewer, loginLocalAccount, markMessageReadForViewer, recoverViewerUid, registerLocalAccount, route, runInactivityMonitor } from "../src/worker.js";
+import { addOwnerViewer, changeLocalAccountPassword, deleteLocalAccount, listMessages, purgeInactiveAccounts, setLocalAccountEmail, eligibleReportWeek, getReceiverSummary, handleCustomAlert, handleInactivityAlert, handleTestWeeklyReport, handleUnlockEvent, inboxPage, listMessagesForViewer, loginLocalAccount, markMessageReadForViewer, recoverViewerUid, registerLocalAccount, route, runInactivityMonitor } from "../src/worker.js";
 
 test("eligibleReportWeek uses current week on Sunday", () => {
   const result = eligibleReportWeek(new Date("2026-06-07T00:00:00.000Z"));
@@ -614,7 +614,8 @@ class Statement {
       }
       return { meta: {} };
     }
-    if (sql.startsWith("DELETE FROM unlock_events")) {
+    // 整表按设备删除（账号删除/清理用）走后面的分支；这里只处理带 LIMIT 的裁剪。
+    if (sql.startsWith("DELETE FROM unlock_events") && sql.includes("LIMIT")) {
       const deviceId = values[0];
       const limit = Number(values[1] || 0);
       const owned = this.db.unlockEvents
@@ -1274,4 +1275,77 @@ test("email set at registration is not lost or overwritable", async () => {
     /已设置邮箱/
   );
   assert.equal(db.localAccounts.get(account.publicId).email, "kept@example.com");
+});
+
+test("users can delete their own account and all of its data", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, { nickname: "Leaver", email: "bye@example.com", password: "secret1234" });
+  await addOwnerViewer(db, account.publicId, "妈妈");
+  await handleUnlockEvent(db, {
+    deviceId: "device-leaver",
+    displayName: "Leaver",
+    guardianHandle: account.publicId,
+    publicId: account.publicId,
+    receiverAccessKey: "secret1234",
+    localDate: "2026-06-01",
+    firstUnlockAt: "2026-06-01T08:00:00+08:00",
+  });
+
+  // 密码不对时不得删除
+  await assert.rejects(
+    () => deleteLocalAccount(db, { publicId: account.publicId, password: "wrong" }),
+    /不正确/
+  );
+  assert.equal(db.localAccounts.has(account.publicId), true, "account survives a wrong password");
+
+  const result = await deleteLocalAccount(db, { publicId: account.publicId, password: "secret1234" });
+  assert.equal(result.ok, true);
+
+  // 账号与其关联数据都应清除，不留「曾经存在」的痕迹
+  assert.equal(db.localAccounts.has(account.publicId), false, "account row is gone");
+  assert.equal(db.ownerViewers.some((v) => v.owner_public_id === account.publicId), false, "viewer list is gone");
+  assert.equal((db.unlockEvents || []).some((e) => e.device_id === "device-leaver"), false, "unlock records are gone");
+
+  // 删除后可以用同样的昵称重新注册
+  const again = await registerLocalAccount(db, { nickname: "Leaver", email: "bye@example.com", password: "secret1234" });
+  assert.notEqual(again.publicId, account.publicId, "a fresh UID is issued");
+});
+
+test("an account can be deleted without logging in, using nickname + email + password", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, { nickname: "Gone", email: "gone@example.com", password: "secret1234" });
+
+  // 邮箱不对 → 拒绝
+  await assert.rejects(
+    () => deleteLocalAccount(db, { nickname: "Gone", email: "wrong@example.com", password: "secret1234" }),
+    /不正确/
+  );
+  // 密码不对 → 拒绝
+  await assert.rejects(
+    () => deleteLocalAccount(db, { nickname: "Gone", email: "gone@example.com", password: "wrong" }),
+    /不正确/
+  );
+  assert.equal(db.localAccounts.has(account.publicId), true, "account survives failed attempts");
+
+  // 三项都对 → 删除（无需 UID）
+  const result = await deleteLocalAccount(db, {
+    nickname: "Gone",
+    email: "gone@example.com",
+    password: "secret1234",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(db.localAccounts.has(account.publicId), false, "account is deleted");
+});
+
+test("delete is refused when nickname, email and password all match several accounts", async () => {
+  const db = new MemoryD1();
+  await registerLocalAccount(db, { nickname: "Twin", email: "twin@example.com", password: "secret1234" });
+  await registerLocalAccount(db, { nickname: "Twin", email: "twin@example.com", password: "secret1234" });
+
+  // 无法判断该删哪一个时必须拒绝，以免误删他人账号。
+  await assert.rejects(
+    () => deleteLocalAccount(db, { nickname: "Twin", email: "twin@example.com", password: "secret1234" }),
+    /多个账号/
+  );
+  assert.equal(db.localAccounts.size, 2, "both accounts are kept");
 });

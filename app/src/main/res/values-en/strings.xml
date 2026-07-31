@@ -243,6 +243,12 @@
     <string name="reg_fail">Registration failed: %1$s</string>
     <string name="reg_need_both">Enter your nickname and password.</string>
     <string name="reg_login_fail">Sign-in failed: %1$s</string>
+    <string name="reg_delete_entry">Delete an account (no UID needed)</string>
+    <string name="reg_delete_title">Delete account</string>
+    <string name="reg_delete_msg">Enter the nickname, email and password. If all three match, the account and all of its cloud records are permanently removed. This cannot be undone.</string>
+    <string name="reg_delete_need_all">Enter the nickname, email and password.</string>
+    <string name="reg_delete_done">Account deleted.</string>
+    <string name="reg_delete_fail">Delete failed: %1$s</string>
     <string name="reg_label_email">Email</string>
     <string name="reg_hint_email">e.g. me@example.com</string>
     <string name="reg_email_hint">Only used to tell accounts apart when the nickname and password are both identical to someone else\'s. We never verify it and never send any email.</string>
@@ -277,6 +283,13 @@
     <string name="pf_pw_mismatch">The new passwords don\'t match.</string>
     <string name="pf_pw_updated">Password updated. Use the new password on phone and web.</string>
     <string name="pf_pw_fail">Update failed: %1$s</string>
+    <string name="pf_delete_title">Delete account</string>
+    <string name="pf_delete_desc">Deleting removes your account, check-in records, messages and viewer list permanently. Register again if you need it later.</string>
+    <string name="pf_delete_button">Permanently delete my account</string>
+    <string name="pf_delete_need_pw">Enter your current password above to confirm.</string>
+    <string name="pf_delete_confirm">Permanently delete this account? This cannot be undone and removes all cloud records.</string>
+    <string name="pf_delete_done">Account deleted.</string>
+    <string name="pf_delete_fail">Delete failed: %1$s</string>
 
     <!-- Viewers -->
     <string name="vw_header">Add the nicknames your family used to register on the web. Once they retrieve a UID, you can see and copy it here.</string>

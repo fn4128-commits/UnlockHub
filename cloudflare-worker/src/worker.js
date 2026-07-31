@@ -38,7 +38,8 @@ export async function route(request, env) {
     url.pathname === "/api/register" ||
     url.pathname === "/api/login" ||
     url.pathname === "/api/recover-uid" ||
-    url.pathname === "/api/change-password"
+    url.pathname === "/api/change-password" ||
+    url.pathname === "/api/delete-account"
   )) {
     await checkRateLimit(env.DB, clientBucket(request, "auth"), 15, 300);
   }
@@ -55,6 +56,10 @@ export async function route(request, env) {
     return html(loginPage());
   }
 
+  if (request.method === "GET" && url.pathname === "/delete-account") {
+    return html(deleteAccountPage());
+  }
+
   if (request.method === "GET" && url.pathname === "/forgot-uid") {
     return html(forgotUidPage());
   }
@@ -63,6 +68,11 @@ export async function route(request, env) {
     const payload = await readJson(request);
     const account = await registerLocalAccount(env.DB, payload);
     return json({ account });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/delete-account") {
+    const payload = await readJson(request);
+    return json(await deleteLocalAccount(env.DB, payload));
   }
 
   if (request.method === "POST" && url.pathname === "/api/set-email") {
@@ -489,26 +499,92 @@ export async function purgeInactiveAccounts(db, nowMs) {
       .bind(cutoff)
       .all();
     for (const row of stale.results || []) {
-      const publicId = row.public_id;
-      // 该账号作为 owner 的签到记录与设备
-      const devices = await db
-        .prepare("SELECT device_id FROM users WHERE public_id = ?1")
-        .bind(publicId)
-        .all();
-      for (const device of devices.results || []) {
-        await db.prepare("DELETE FROM unlock_events WHERE device_id = ?1").bind(device.device_id).run();
-      }
-      await db.prepare("DELETE FROM users WHERE public_id = ?1").bind(publicId).run();
-      await db.prepare("DELETE FROM messages WHERE recipient_handle = ?1").bind(publicId).run();
-      await db.prepare("DELETE FROM owner_viewers WHERE owner_public_id = ?1").bind(publicId).run();
-      await db.prepare("DELETE FROM receiver_keys WHERE guardian_handle = ?1").bind(publicId).run();
-      await db.prepare("DELETE FROM local_accounts WHERE public_id = ?1").bind(publicId).run();
+      await deleteAccountData(db, row.public_id);
       purged += 1;
     }
   } catch (error) {
     // 清理失败不影响告警监控。
   }
   return { purged };
+}
+
+/**
+ * 彻底删除一个账号及其全部数据。自动清理与用户手动删除共用同一段逻辑，
+ * 避免两条路径删得不一样而留下残留。删除后不保留任何可identify的痕迹。
+ */
+async function deleteAccountData(db, publicId) {
+  const id = String(publicId || "").trim().toUpperCase();
+  if (!id) {
+    return;
+  }
+  const devices = await db
+    .prepare("SELECT device_id FROM users WHERE public_id = ?1")
+    .bind(id)
+    .all();
+  for (const device of devices.results || []) {
+    await db.prepare("DELETE FROM unlock_events WHERE device_id = ?1").bind(device.device_id).run();
+  }
+  await db.prepare("DELETE FROM users WHERE public_id = ?1").bind(id).run();
+  await db.prepare("DELETE FROM messages WHERE recipient_handle = ?1").bind(id).run();
+  await db.prepare("DELETE FROM owner_viewers WHERE owner_public_id = ?1").bind(id).run();
+  await db.prepare("DELETE FROM receiver_keys WHERE guardian_handle = ?1").bind(id).run();
+  await db.prepare("DELETE FROM local_accounts WHERE public_id = ?1").bind(id).run();
+}
+
+/**
+ * 用户主动删除自己的账号（Google Play 要求提供的账号删除途径）。
+ * 需要 UID + 密码，删除不可撤销，也不保留「曾经存在过」的记录。
+ */
+export async function deleteLocalAccount(db, payload) {
+  const password = String(payload.password || "");
+  if (!password) {
+    throw new BadRequest("请填写密码");
+  }
+
+  // 方式一：已登录（有 UID）——UID + 密码。
+  const publicId = String(payload.publicId || payload.uid || "").trim().toUpperCase();
+  if (publicId) {
+    const account = await getLocalAccount(db, publicId);
+    if (!account || !(await verifyPassword(password, account.password_salt, account.password_hash))) {
+      throw new BadRequest("UID 或密码不正确");
+    }
+    await deleteAccountData(db, publicId);
+    return { ok: true, deleted: publicId };
+  }
+
+  // 方式二：未登录（不记得 UID）——昵称 + 邮箱 + 密码三方核对。
+  // 没有这条路径，忘了在旧设备删除的人就只能等 5 年自动清除。
+  const nickname = normalizeNickname(payload.nickname || "");
+  const email = normalizeEmail(payload.email || "");
+  if (!nickname || !email) {
+    throw new BadRequest("请填写昵称、邮箱与密码");
+  }
+  const candidates = await db
+    .prepare(
+      `SELECT public_id, nickname, password_salt, password_hash, account_role, email
+       FROM local_accounts
+       WHERE lower(nickname) = lower(?1)`
+    )
+    .bind(nickname)
+    .all();
+  const matched = [];
+  for (const row of candidates.results || []) {
+    if (normalizeEmail(row.email || "") !== email) {
+      continue;
+    }
+    if (await verifyPassword(password, row.password_salt, row.password_hash)) {
+      matched.push(row);
+    }
+  }
+  if (!matched.length) {
+    throw new BadRequest("昵称、邮箱或密码不正确");
+  }
+  if (matched.length > 1) {
+    // 三项全同的账号无法区分，拒绝删除以免误删他人账号。
+    throw new BadRequest("匹配到多个账号，请登录后在个人资料中删除");
+  }
+  await deleteAccountData(db, matched[0].public_id);
+  return { ok: true, deleted: matched[0].public_id };
 }
 
 export async function runInactivityMonitor(db, nowMs) {
@@ -2266,7 +2342,7 @@ function loginPage() {
       </div>
       <button class="button" id="login" type="submit">登录</button>
     </form>
-    <p class="sub">还没有账号？<a href="/register">注册查看账号</a> · <a href="/forgot-uid">忘记 UID？</a></p>
+    <p class="sub">还没有账号？<a href="/register">注册查看账号</a> · <a href="/forgot-uid">忘记 UID？</a> · <a href="/delete-account">删除账号</a></p>
     <div id="result" class="card" style="display:none"></div>
   </main>
   <script>${credentialsScript()}</script>
@@ -2302,6 +2378,67 @@ function loginPage() {
         if (!response.ok) throw new Error(data.error || '登录失败');
         saveCredentials(data.account.publicId, passwordInput.value, data.account.nickname);
         location.href = '/' + (querySyncId ? '?syncId=' + encodeURIComponent(querySyncId) : '');
+      } catch (error) {
+        result.textContent = error.message;
+      }
+    }
+  </script>
+</body>
+</html>`;
+}
+
+
+function deleteAccountPage() {
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  ${pageHead("UnlockHub 删除账号")}
+</head>
+<body>
+  <main>
+    <div class="page-top">
+      ${brandHeader("删除账号", "用昵称、邮箱和密码删除账号。无需登录，适用于换了设备或不记得 UID 的情况。")}
+      <div class="auth-corner"><a href="/login">返回登录</a></div>
+    </div>
+    <div class="card">
+      <label for="nickname">昵称</label>
+      <input id="nickname" placeholder="注册时填写的昵称" autocomplete="nickname">
+      <label for="email">电子邮箱</label>
+      <input id="email" placeholder="注册时填写的邮箱" autocomplete="email">
+      <label for="password">密码</label>
+      <input id="password" type="password" placeholder="账号密码" autocomplete="current-password">
+      <p class="hint">三项都核对通过才会删除。删除后账号、签到记录、消息与查看名单将被永久移除，无法恢复。</p>
+      <button class="button" id="doDelete" type="button" style="background:#d32f2f;border-color:#d32f2f">永久删除该账号</button>
+    </div>
+    <div id="result" class="card" style="display:none"></div>
+  </main>
+  <script>
+    const result = document.getElementById('result');
+    document.getElementById('doDelete').addEventListener('click', doDelete);
+    async function doDelete() {
+      result.style.display = 'block';
+      const nickname = document.getElementById('nickname').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!nickname || !email || !password) {
+        result.textContent = '请填写昵称、邮箱与密码。';
+        return;
+      }
+      if (!confirm('确定永久删除该账号吗？此操作不可恢复。')) {
+        result.textContent = '已取消。';
+        return;
+      }
+      result.textContent = '正在核对并删除...';
+      try {
+        const response = await fetch('/api/delete-account', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ nickname: nickname, email: email, password: password })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || '删除失败');
+        result.innerHTML = '<h2>账号已删除</h2><pre>该账号与全部记录已永久移除。</pre>' +
+          '<p class="sub"><a href="/register">重新注册</a></p>';
       } catch (error) {
         result.textContent = error.message;
       }
@@ -2402,6 +2539,14 @@ function profilePage() {
     <div id="accountBar" class="account-bar" hidden>
       <button class="button secondary" id="logout" type="button">退出登录</button>
     </div>
+    <div class="card">
+      <h2>删除账号</h2>
+      <p class="sub">删除后，你的账号、签到记录、消息与查看名单将被永久移除，且无法恢复。
+      需要再次使用时请重新注册。</p>
+      <label for="deletePassword">输入密码以确认</label>
+      <input id="deletePassword" type="password" placeholder="当前密码" autocomplete="current-password">
+      <button class="button" id="deleteAccount" type="button" style="background:#d32f2f;border-color:#d32f2f">永久删除我的账号</button>
+    </div>
   </main>
   <script>${credentialsScript()}</script>
   <script>
@@ -2428,6 +2573,38 @@ function profilePage() {
       clearCredentials();
       location.href = '/login';
     });
+    document.getElementById('deleteAccount').addEventListener('click', deleteAccount);
+    async function deleteAccount() {
+      result.style.display = 'block';
+      if (!saved.uid) {
+        result.textContent = '请先登录后再删除账号。';
+        return;
+      }
+      const password = document.getElementById('deletePassword').value;
+      if (!password) {
+        result.textContent = '请输入密码以确认删除。';
+        return;
+      }
+      if (!confirm('确定永久删除账号吗？此操作不可恢复。')) {
+        result.textContent = '已取消。';
+        return;
+      }
+      result.textContent = '正在删除...';
+      try {
+        const response = await fetch('/api/delete-account', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ publicId: saved.uid, password: password })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || '删除失败');
+        clearCredentials();
+        result.innerHTML = '<h2>账号已删除</h2><pre>你的账号与全部记录已永久移除。</pre>' +
+          '<p class="sub"><a href="/register">重新注册</a></p>';
+      } catch (error) {
+        result.textContent = error.message;
+      }
+    }
     async function changePassword() {
       const newPassword = document.getElementById('newPassword').value;
       const confirmPassword = document.getElementById('confirmPassword').value;

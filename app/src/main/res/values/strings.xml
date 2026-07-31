@@ -243,6 +243,12 @@
     <string name="reg_fail">注册失败: %1$s</string>
     <string name="reg_need_both">请输入昵称和密码。</string>
     <string name="reg_login_fail">登录失败: %1$s</string>
+    <string name="reg_delete_entry">删除账号（不记得 UID 也能删）</string>
+    <string name="reg_delete_title">删除账号</string>
+    <string name="reg_delete_msg">填写昵称、邮箱与密码，三项核对通过后永久删除该账号及其全部云端记录。此操作不可恢复。</string>
+    <string name="reg_delete_need_all">请填写昵称、邮箱与密码。</string>
+    <string name="reg_delete_done">账号已删除。</string>
+    <string name="reg_delete_fail">删除失败: %1$s</string>
     <string name="reg_label_email">电子邮箱</string>
     <string name="reg_hint_email">例如：me@example.com</string>
     <string name="reg_email_hint">仅在「昵称和密码都与他人相同」时用来区分账号。我们不会验证它，也不会发送任何邮件。</string>
@@ -277,6 +283,13 @@
     <string name="pf_pw_mismatch">两次输入的新密码不一致。</string>
     <string name="pf_pw_updated">密码已更新。手机端和网页端查看将使用新密码。</string>
     <string name="pf_pw_fail">修改失败: %1$s</string>
+    <string name="pf_delete_title">删除账号</string>
+    <string name="pf_delete_desc">删除后，你的账号、签到记录、消息与查看名单将被永久移除，无法恢复。需要再次使用请重新注册。</string>
+    <string name="pf_delete_button">永久删除我的账号</string>
+    <string name="pf_delete_need_pw">请先在上方填写当前密码以确认。</string>
+    <string name="pf_delete_confirm">确定永久删除账号吗？此操作不可恢复，云端全部记录都会被移除。</string>
+    <string name="pf_delete_done">账号已删除。</string>
+    <string name="pf_delete_fail">删除失败: %1$s</string>
 
     <!-- 查看人 -->
     <string name="vw_header">添加家人在网页注册时使用的昵称。家人找回 UID 后，可在这里看到并复制分享。</string>

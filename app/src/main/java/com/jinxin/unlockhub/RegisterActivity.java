@@ -115,6 +115,15 @@ public final class RegisterActivity extends com.jinxin.unlockhub.ui.BaseActivity
         Button loginButton = AppUi.secondaryButton(this, getString(R.string.reg_login_button));
         loginButton.setOnClickListener(v -> loginAccount());
         loginCard.addView(loginButton);
+        // 未登录也能删除账号：不记得 UID 或换了设备时，用昵称+邮箱+密码删除，
+        // 否则只能等 5 年自动清除。
+        TextView deleteEntry = AppUi.body(this, getString(R.string.reg_delete_entry));
+        deleteEntry.setTextSize(13);
+        deleteEntry.setPadding(0, AppUi.dp(this, 12), 0, 0);
+        deleteEntry.setClickable(true);
+        deleteEntry.setTextColor(getColor(R.color.accent));
+        deleteEntry.setOnClickListener(v -> promptDeleteAccount());
+        loginCard.addView(deleteEntry);
         root.addView(loginCard);
 
         return scrollView;
@@ -210,6 +219,45 @@ public final class RegisterActivity extends com.jinxin.unlockhub.ui.BaseActivity
                 })
                 .setNegativeButton(getString(R.string.reg_backfill_later), (dialog, which) -> openHome())
                 .setCancelable(false)
+                .show();
+    }
+
+    /** 未登录删除账号：昵称 + 邮箱 + 密码三方核对，二次确认后执行。 */
+    private void promptDeleteAccount() {
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        int pad = AppUi.dp(this, 20);
+        wrap.setPadding(pad, AppUi.dp(this, 8), pad, 0);
+        EditText nick = AppUi.input(this, getString(R.string.reg_label_nickname2));
+        EditText mail = AppUi.input(this, getString(R.string.reg_hint_email));
+        mail.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        EditText pass = AppUi.input(this, getString(R.string.reg_label_password));
+        pass.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        wrap.addView(nick);
+        wrap.addView(mail);
+        wrap.addView(pass);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.reg_delete_title))
+                .setMessage(getString(R.string.reg_delete_msg))
+                .setView(wrap)
+                .setPositiveButton(getString(R.string.pf_delete_button), (dialog, which) -> {
+                    String nickname = nick.getText().toString().trim();
+                    String email = mail.getText().toString().trim();
+                    String password = pass.getText().toString();
+                    if (nickname.isEmpty() || email.isEmpty() || password.isEmpty()) {
+                        setStatus(getString(R.string.reg_delete_need_all));
+                        return;
+                    }
+                    executor.execute(() -> {
+                        try {
+                            new ApiClient(this).deleteAccountByNickname(nickname, email, password);
+                            runOnUiThread(() -> setStatus(getString(R.string.reg_delete_done)));
+                        } catch (Exception e) {
+                            runOnUiThread(() -> setStatus(getString(R.string.reg_delete_fail, e.getMessage())));
+                        }
+                    });
+                })
+                .setNegativeButton(getString(R.string.common_cancel), null)
                 .show();
     }
 

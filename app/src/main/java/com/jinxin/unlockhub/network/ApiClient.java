@@ -108,6 +108,25 @@ public final class ApiClient {
         postForBody("/api/set-email", body);
     }
 
+    /** 未登录时删除账号：昵称 + 邮箱 + 密码三方核对（不记得 UID 也能删）。 */
+    public void deleteAccountByNickname(String nickname, String email, String password) throws IOException {
+        String body = "{" +
+                json("nickname", nickname) + "," +
+                json("email", email) + "," +
+                json("password", password) +
+                "}";
+        postForBody("/api/delete-account", body);
+    }
+
+    /** 永久删除账号及其云端全部数据（Play 要求的账号删除途径）。 */
+    public void deleteAccount(String publicId, String password) throws IOException {
+        String body = "{" +
+                json("publicId", publicId) + "," +
+                json("password", password) +
+                "}";
+        postForBody("/api/delete-account", body);
+    }
+
     public void changePassword(String publicId, String currentPassword, String newPassword) throws IOException {
         String body = "{" +
                 json("publicId", publicId) + "," +

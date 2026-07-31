@@ -140,11 +140,57 @@ public final class ProfileActivity extends com.jinxin.unlockhub.ui.BaseActivity 
         logoutButton.setOnClickListener(v -> logout());
         root.addView(logoutButton);
 
+        // 删除账号：Google Play 要求「允许创建账号的应用必须提供应用内删除途径」。
+        LinearLayout deleteCard = AppUi.createCard(this);
+        deleteCard.addView(AppUi.sectionTitle(this, getString(R.string.pf_delete_title)));
+        TextView deleteHint = AppUi.body(this, getString(R.string.pf_delete_desc));
+        deleteHint.setTextSize(13);
+        deleteCard.addView(deleteHint);
+        Button deleteButton = AppUi.primaryButton(this, getString(R.string.pf_delete_button));
+        android.graphics.drawable.Drawable redBg = deleteButton.getBackground();
+        if (redBg != null) {
+            redBg = redBg.mutate();
+            redBg.setTint(0xFFD32F2F);
+            deleteButton.setBackground(redBg);
+        }
+        deleteButton.setOnClickListener(v -> confirmDeleteAccount());
+        deleteCard.addView(deleteButton);
+        root.addView(deleteCard);
+
         statusText = AppUi.body(this, "");
         statusText.setPadding(0, AppUi.dp(this, 12), 0, 0);
         root.addView(statusText);
 
         return scrollView;
+    }
+
+    /** 二次确认后永久删除账号：需当前密码，删除成功即清空本机会话并回到注册页。 */
+    private void confirmDeleteAccount() {
+        String publicId = Prefs.publicId(this);
+        String password = currentPasswordInput.getText().toString();
+        if (password.isEmpty()) {
+            setStatus(getString(R.string.pf_delete_need_pw));
+            return;
+        }
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.pf_delete_title))
+                .setMessage(getString(R.string.pf_delete_confirm))
+                .setPositiveButton(getString(R.string.pf_delete_button), (dialog, which) -> executor.execute(() -> {
+                    try {
+                        new ApiClient(this).deleteAccount(publicId, password);
+                        Prefs.clearAccount(this);
+                        runOnUiThread(() -> {
+                            setStatus(getString(R.string.pf_delete_done));
+                            startActivity(new Intent(this, RegisterActivity.class)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
+                            finish();
+                        });
+                    } catch (Exception e) {
+                        runOnUiThread(() -> setStatus(getString(R.string.pf_delete_fail, e.getMessage())));
+                    }
+                }))
+                .setNegativeButton(getString(R.string.common_cancel), null)
+                .show();
     }
 
     private void refreshProfile() {
