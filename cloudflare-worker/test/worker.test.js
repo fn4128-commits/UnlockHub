@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { addOwnerViewer, changeLocalAccountPassword, listMessages, eligibleReportWeek, getReceiverSummary, handleCustomAlert, handleInactivityAlert, handleTestWeeklyReport, handleUnlockEvent, inboxPage, listMessagesForViewer, loginLocalAccount, markMessageReadForViewer, recoverViewerUid, registerLocalAccount, route, runInactivityMonitor } from "../src/worker.js";
+import { addOwnerViewer, changeLocalAccountPassword, listMessages, purgeInactiveAccounts, setLocalAccountEmail, eligibleReportWeek, getReceiverSummary, handleCustomAlert, handleInactivityAlert, handleTestWeeklyReport, handleUnlockEvent, inboxPage, listMessagesForViewer, loginLocalAccount, markMessageReadForViewer, recoverViewerUid, registerLocalAccount, route, runInactivityMonitor } from "../src/worker.js";
 
 test("eligibleReportWeek uses current week on Sunday", () => {
   const result = eligibleReportWeek(new Date("2026-06-07T00:00:00.000Z"));
@@ -711,7 +711,44 @@ class Statement {
         password_hash: values[3],
         account_role: values[4] || "owner",
         email: values[5] || "",
+        last_active_at: new Date().toISOString().replace("T", " ").slice(0, 19),
       });
+      return { meta: {} };
+    }
+    if (sql.startsWith("UPDATE local_accounts SET last_active_at")) {
+      const account = this.db.localAccounts.get(values[0]);
+      if (account) account.last_active_at = new Date().toISOString().replace("T", " ").slice(0, 19);
+      return { meta: {} };
+    }
+    if (sql.startsWith("UPDATE local_accounts SET email")) {
+      const account = this.db.localAccounts.get(values[1]);
+      if (account) account.email = values[0];
+      return { meta: {} };
+    }
+    if (sql.startsWith("DELETE FROM local_accounts WHERE public_id")) {
+      this.db.localAccounts.delete(values[0]);
+      return { meta: {} };
+    }
+    if (sql.startsWith("DELETE FROM users WHERE public_id")) {
+      for (const [key, user] of Array.from(this.db.users.entries())) {
+        if (user.public_id === values[0]) this.db.users.delete(key);
+      }
+      return { meta: {} };
+    }
+    if (sql.startsWith("DELETE FROM unlock_events WHERE device_id")) {
+      this.db.unlockEvents = (this.db.unlockEvents || []).filter((e) => e.device_id !== values[0]);
+      return { meta: {} };
+    }
+    if (sql === "DELETE FROM messages WHERE recipient_handle = ?1") {
+      this.db.messages = this.db.messages.filter((m) => m.recipient_handle !== values[0]);
+      return { meta: {} };
+    }
+    if (sql.startsWith("DELETE FROM owner_viewers WHERE owner_public_id")) {
+      this.db.ownerViewers = this.db.ownerViewers.filter((v) => v.owner_public_id !== values[0]);
+      return { meta: {} };
+    }
+    if (sql.startsWith("DELETE FROM receiver_keys WHERE guardian_handle")) {
+      this.db.receiverKeys.delete(values[0]);
       return { meta: {} };
     }
     if (sql.startsWith("INSERT INTO owner_viewers")) {
@@ -963,9 +1000,17 @@ class Statement {
       const account = this.db.localAccounts.get(values[0]);
       return account || null;
     }
-    if (sql.startsWith("SELECT public_id, nickname, password_salt, password_hash, account_role FROM local_accounts")) {
+    if (sql.startsWith("SELECT public_id, nickname, password_salt, password_hash, account_role") &&
+        sql.includes("FROM local_accounts WHERE public_id")) {
       const account = this.db.localAccounts.get(values[0]);
-      return account || null;
+      if (!account) return null;
+      // 只返回 SQL 里点名的列：真实 D1 不会给出未 SELECT 的字段，
+      // 这样「忘记 SELECT email」这类 bug 才会在测试里暴露出来。
+      const picked = {};
+      for (const column of ["public_id", "nickname", "password_salt", "password_hash", "account_role", "email", "last_active_at"]) {
+        if (sql.includes(column)) picked[column] = account[column];
+      }
+      return picked;
     }
     if (sql.includes("FROM local_accounts") && sql.includes("lower(nickname) = lower(?1)")) {
       const wanted = String(values[0] || "").toLowerCase();
@@ -991,6 +1036,19 @@ class Statement {
   async all() {
     const sql = this.sql;
     const values = this.values;
+    if (sql.startsWith("SELECT public_id FROM local_accounts WHERE last_active_at <")) {
+      const cutoff = String(values[0] || "");
+      const results = Array.from(this.db.localAccounts.values())
+        .filter((a) => String(a.last_active_at || "") < cutoff)
+        .map((a) => ({ public_id: a.public_id }));
+      return { results };
+    }
+    if (sql.startsWith("SELECT device_id FROM users WHERE public_id")) {
+      const results = Array.from(this.db.users.values())
+        .filter((u) => u.public_id === values[0])
+        .map((u) => ({ device_id: u.device_id }));
+      return { results };
+    }
     if (sql.includes("FROM local_accounts") && sql.includes("lower(email) = lower(?1)")) {
       const wanted = String(values[0] || "").toLowerCase();
       const results = Array.from(this.db.localAccounts.values())
@@ -1155,3 +1213,65 @@ class Statement {
   }
 }
 
+test("old accounts without an email are asked to add one, and can", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, { nickname: "Old", email: "old@example.com", password: "secret1234" });
+  // 模拟迁移前的老账号：邮箱为空
+  db.localAccounts.get(account.publicId).email = "";
+
+  const loggedIn = await loginLocalAccount(db, { publicId: account.publicId, password: "secret1234" });
+  assert.equal(loggedIn.needsEmail, true, "old account should be flagged");
+
+  await setLocalAccountEmail(db, {
+    publicId: account.publicId,
+    password: "secret1234",
+    email: "filled@example.com",
+  });
+
+  const after = await loginLocalAccount(db, { publicId: account.publicId, password: "secret1234" });
+  assert.equal(after.needsEmail, false, "flag clears once the email is set");
+
+  // 已有邮箱时不允许再改（此接口只用于补填）
+  await assert.rejects(
+    () => setLocalAccountEmail(db, { publicId: account.publicId, password: "secret1234", email: "x@example.com" }),
+    /已设置邮箱/
+  );
+});
+
+test("accounts inactive for five years are purged, active ones are kept", async () => {
+  const db = new MemoryD1();
+  const stale = await registerLocalAccount(db, { nickname: "Stale", email: "stale@example.com", password: "secret1234" });
+  const fresh = await registerLocalAccount(db, { nickname: "Fresh", email: "fresh@example.com", password: "secret1234" });
+
+  // 把一个账号的最后活动时间挪到 6 年前
+  db.localAccounts.get(stale.publicId).last_active_at = "2020-01-01 00:00:00";
+
+  const result = await purgeInactiveAccounts(db, Date.parse("2026-07-30T00:00:00Z"));
+  assert.equal(result.purged, 1);
+  assert.equal(db.localAccounts.has(stale.publicId), false, "stale account is gone");
+  assert.equal(db.localAccounts.has(fresh.publicId), true, "active account is kept");
+});
+
+test("email set at registration is not lost or overwritable", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, {
+    nickname: "Keeper",
+    email: "kept@example.com",
+    password: "secret1234",
+  });
+
+  // 登录时必须读得到邮箱，否则会把新账号误判成「需要补填」。
+  const loggedIn = await loginLocalAccount(db, { publicId: account.publicId, password: "secret1234" });
+  assert.equal(loggedIn.needsEmail, false, "a freshly registered account already has an email");
+
+  // 补填接口只用于没有邮箱的老账号，绝不能覆盖已有邮箱。
+  await assert.rejects(
+    () => setLocalAccountEmail(db, {
+      publicId: account.publicId,
+      password: "secret1234",
+      email: "attacker@example.com",
+    }),
+    /已设置邮箱/
+  );
+  assert.equal(db.localAccounts.get(account.publicId).email, "kept@example.com");
+});

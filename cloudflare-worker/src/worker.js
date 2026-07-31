@@ -1,4 +1,5 @@
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
+const INACTIVE_ACCOUNT_YEARS = 5;
 const HTML_HEADERS = { "content-type": "text/html; charset=utf-8" };
 const SESSION_COOKIE = "sp_session";
 const OAUTH_STATE_COOKIE = "sp_oauth_state";
@@ -23,6 +24,8 @@ export default {
   },
   async scheduled(controller, env) {
     await runInactivityMonitor(env.DB, Date.now());
+    // 顺带清理 5 年无活动的账号（复用同一个定时触发，无额外成本）。
+    await purgeInactiveAccounts(env.DB, Date.now());
   },
 };
 
@@ -60,6 +63,11 @@ export async function route(request, env) {
     const payload = await readJson(request);
     const account = await registerLocalAccount(env.DB, payload);
     return json({ account });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/set-email") {
+    const payload = await readJson(request);
+    return json(await setLocalAccountEmail(env.DB, payload));
   }
 
   if (request.method === "POST" && url.pathname === "/api/login") {
@@ -378,6 +386,8 @@ export async function handleUnlockEvent(db, payload) {
   const publicId = payload.publicId ? String(payload.publicId) : "";
   const displayName = String(payload.displayName);
   const guardianHandle = String(payload.guardianHandle);
+  // App 上报签到＝活动，刷新最后活动时间（用于 5 年无活动自动清除）。
+  await touchAccountActivity(db, publicId || guardianHandle);
   const receiverAccessKey = payload.receiverAccessKey ? String(payload.receiverAccessKey) : "";
   const localDate = String(payload.localDate);
   const firstUnlockAt = String(payload.firstUnlockAt);
@@ -442,6 +452,63 @@ export async function handleInactivityAlert(db, payload) {
     lastActivityAt,
     inactiveHours,
   });
+}
+
+/**
+ * 记录账号活动（用于「5 年无活动自动删除」）。
+ * App 签到/登录、网页端查看状态页都会调用；失败不影响主流程。
+ */
+async function touchAccountActivity(db, publicId) {
+  const id = String(publicId || "").trim().toUpperCase();
+  if (!id) {
+    return;
+  }
+  try {
+    await db
+      .prepare("UPDATE local_accounts SET last_active_at = CURRENT_TIMESTAMP WHERE public_id = ?1")
+      .bind(id)
+      .run();
+  } catch (error) {
+    // 表/列缺失等异常不应阻断正常功能。
+  }
+}
+
+/**
+ * 清除连续 INACTIVE_ACCOUNT_YEARS 年无任何活动的账号及其数据。
+ * 由既有的定时任务（每 6 小时）顺带执行，不新增触发器、不产生额外费用。
+ */
+export async function purgeInactiveAccounts(db, nowMs) {
+  const cutoff = new Date(nowMs - INACTIVE_ACCOUNT_YEARS * 365 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .replace("T", " ")
+    .slice(0, 19);
+  let purged = 0;
+  try {
+    const stale = await db
+      .prepare("SELECT public_id FROM local_accounts WHERE last_active_at < ?1")
+      .bind(cutoff)
+      .all();
+    for (const row of stale.results || []) {
+      const publicId = row.public_id;
+      // 该账号作为 owner 的签到记录与设备
+      const devices = await db
+        .prepare("SELECT device_id FROM users WHERE public_id = ?1")
+        .bind(publicId)
+        .all();
+      for (const device of devices.results || []) {
+        await db.prepare("DELETE FROM unlock_events WHERE device_id = ?1").bind(device.device_id).run();
+      }
+      await db.prepare("DELETE FROM users WHERE public_id = ?1").bind(publicId).run();
+      await db.prepare("DELETE FROM messages WHERE recipient_handle = ?1").bind(publicId).run();
+      await db.prepare("DELETE FROM owner_viewers WHERE owner_public_id = ?1").bind(publicId).run();
+      await db.prepare("DELETE FROM receiver_keys WHERE guardian_handle = ?1").bind(publicId).run();
+      await db.prepare("DELETE FROM local_accounts WHERE public_id = ?1").bind(publicId).run();
+      purged += 1;
+    }
+  } catch (error) {
+    // 清理失败不影响告警监控。
+  }
+  return { purged };
 }
 
 export async function runInactivityMonitor(db, nowMs) {
@@ -1471,7 +1538,14 @@ export async function loginLocalAccount(db, payload) {
   if (!account) {
     throw new BadRequest(publicId ? "UID 或密码不正确" : "昵称或密码不正确");
   }
-  return { publicId: account.public_id, nickname: account.nickname, role: account.account_role || "owner" };
+  await touchAccountActivity(db, account.public_id);
+  return {
+    publicId: account.public_id,
+    nickname: account.nickname,
+    role: account.account_role || "owner",
+    // 迁移前注册的老账号没有邮箱：提示补填，避免日后与同名同密码账号冲突时无法区分。
+    needsEmail: !normalizeEmail(account.email || ""),
+  };
 }
 
 export async function recoverViewerUid(db, payload) {
@@ -1611,6 +1685,31 @@ async function findLocalAccountForNicknameLogin(db, nickname, password, email = 
 /** 邮箱规范化：去空白 + 转小写。不做格式强校验，也从不发送邮件。 */
 function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+/** 为账号补填邮箱（老账号迁移用）。需提供 UID + 密码，只允许在邮箱为空时设置。 */
+export async function setLocalAccountEmail(db, payload) {
+  const publicId = String(payload.publicId || payload.uid || "").trim().toUpperCase();
+  const password = String(payload.password || "");
+  const email = normalizeEmail(payload.email || "");
+  if (!publicId || !password) {
+    throw new BadRequest("请先登录账号");
+  }
+  if (!email) {
+    throw new BadRequest("请填写电子邮箱");
+  }
+  const account = await getLocalAccount(db, publicId);
+  if (!account || !(await verifyPassword(password, account.password_salt, account.password_hash))) {
+    throw new BadRequest("UID 或密码不正确");
+  }
+  if (normalizeEmail(account.email || "")) {
+    throw new BadRequest("该账号已设置邮箱");
+  }
+  await db
+    .prepare("UPDATE local_accounts SET email = ?1, updated_at = CURRENT_TIMESTAMP WHERE public_id = ?2")
+    .bind(email, publicId)
+    .run();
+  return { ok: true, email };
 }
 
 export async function changeLocalAccountPassword(db, payload) {
@@ -1781,8 +1880,9 @@ function normalizeNickname(value) {
 }
 
 async function getLocalAccount(db, publicId) {
+  // 必须带上 email：登录要据此判断 needsEmail，补填接口要据此拒绝覆盖已有邮箱。
   return db
-    .prepare("SELECT public_id, nickname, password_salt, password_hash, account_role FROM local_accounts WHERE public_id = ?1")
+    .prepare("SELECT public_id, nickname, password_salt, password_hash, account_role, email FROM local_accounts WHERE public_id = ?1")
     .bind(publicId)
     .first();
 }
@@ -1818,6 +1918,8 @@ async function isViewerAllowed(db, ownerPublicId, viewerNickname) {
 }
 
 async function requireViewerViewAccess(db, ownerPublicId, auth) {
+  // 网页端查看也算活动：查看者与被查看者都刷新，避免长期只被看的一方被误清。
+  await touchAccountActivity(db, ownerPublicId);
   const viewer = await verifyViewerCredentials(db, auth.viewerId, auth.viewerPassword);
   if (!(await isViewerAllowed(db, ownerPublicId, viewer.nickname))) {
     throw new BadRequest("您的昵称未在对方的查看名单中，请联系对方在手机端添加");

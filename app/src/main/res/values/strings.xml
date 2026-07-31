@@ -247,6 +247,9 @@
     <string name="reg_hint_email">例如：me@example.com</string>
     <string name="reg_email_hint">仅在「昵称和密码都与他人相同」时用来区分账号。我们不会验证它，也不会发送任何邮件。</string>
     <string name="reg_need_email">请填写电子邮箱（用于区分同名同密码的账号）。</string>
+    <string name="reg_backfill_title">补充电子邮箱</string>
+    <string name="reg_backfill_msg">你的账号还没有邮箱。补填后，万一有人用了相同的昵称和密码，也能区分出你的账号。我们不会验证它，也不会发送任何邮件。</string>
+    <string name="reg_backfill_later">暂不</string>
 
     <!-- 个人资料 -->
     <string name="pf_back">返回主页</string>

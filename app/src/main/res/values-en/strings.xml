@@ -247,6 +247,9 @@
     <string name="reg_hint_email">e.g. me@example.com</string>
     <string name="reg_email_hint">Only used to tell accounts apart when the nickname and password are both identical to someone else\'s. We never verify it and never send any email.</string>
     <string name="reg_need_email">Enter an email (used to tell apart accounts with the same nickname and password).</string>
+    <string name="reg_backfill_title">Add an email</string>
+    <string name="reg_backfill_msg">Your account has no email yet. Adding one lets us tell your account apart if someone else uses the same nickname and password. We never verify it and never send any email.</string>
+    <string name="reg_backfill_later">Not now</string>
 
     <!-- Profile -->
     <string name="pf_back">Back to home</string>

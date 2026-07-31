@@ -98,6 +98,16 @@ public final class ApiClient {
         return accountFromJson(context, postForBody("/api/login", body));
     }
 
+    /** 为老账号补填邮箱（仅在服务端返回 needsEmail 时需要）。 */
+    public void setEmail(String publicId, String password, String email) throws IOException {
+        String body = "{" +
+                json("publicId", publicId) + "," +
+                json("password", password) + "," +
+                json("email", email) +
+                "}";
+        postForBody("/api/set-email", body);
+    }
+
     public void changePassword(String publicId, String currentPassword, String newPassword) throws IOException {
         String body = "{" +
                 json("publicId", publicId) + "," +
@@ -318,7 +328,8 @@ public final class ApiClient {
         if (publicId == null || publicId.isEmpty()) {
             throw new IOException(context.getString(com.jinxin.unlockhub.R.string.api_no_uid));
         }
-        return new Account(publicId, nickname == null ? "" : nickname);
+        boolean needsEmail = json.contains("\"needsEmail\":true");
+        return new Account(publicId, nickname == null ? "" : nickname, needsEmail);
     }
 
     private static String extractJsonString(String json, String key) {
@@ -362,10 +373,13 @@ public final class ApiClient {
     public static final class Account {
         public final String publicId;
         public final String nickname;
+        /** 服务端标记：该账号尚未设置邮箱（迁移前注册的老账号），应提示补填。 */
+        public final boolean needsEmail;
 
-        private Account(String publicId, String nickname) {
+        private Account(String publicId, String nickname, boolean needsEmail) {
             this.publicId = publicId;
             this.nickname = nickname;
+            this.needsEmail = needsEmail;
         }
     }
 

@@ -16,8 +16,8 @@ android {
         applicationId "com.jinxin.unlockhub"  // 对外发布包名（Play 唯一标识，发布后不可改）
         minSdk 26
         targetSdk 36
-        versionCode 40
-        versionName "0.9.1"
+        versionCode 41
+        versionName "0.9.2"
     }
 
     signingConfigs {

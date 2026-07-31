@@ -116,6 +116,8 @@ CREATE TABLE IF NOT EXISTS local_accounts (
   account_role TEXT NOT NULL DEFAULT 'owner',
   -- 仅用于「同名同密码」时区分账号；不验证真实性、不发邮件。
   email TEXT NOT NULL DEFAULT '',
+  -- 最后活动时间：App 签到/登录、网页查看都会刷新；5 年无活动则自动删除账号。
+  last_active_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

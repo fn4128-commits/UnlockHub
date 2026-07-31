@@ -161,7 +161,12 @@ public final class RegisterActivity extends com.jinxin.unlockhub.ui.BaseActivity
             try {
                 ApiClient.Account account = new ApiClient(this).loginAccount(nickname, password, email);
                 bindAccount(account, password);
-                runOnUiThread(this::openHome);
+                if (account.needsEmail) {
+                    // 迁移前注册的老账号：登录后提示补填邮箱，避免日后同名同密码时无法区分。
+                    runOnUiThread(() -> promptBackfillEmail(account.publicId, password));
+                } else {
+                    runOnUiThread(this::openHome);
+                }
             } catch (Exception e) {
                 final String message = e.getMessage() == null ? "" : e.getMessage();
                 runOnUiThread(() -> {
@@ -173,6 +178,39 @@ public final class RegisterActivity extends com.jinxin.unlockhub.ui.BaseActivity
                 });
             }
         });
+    }
+
+    /** 老账号补填邮箱：可跳过，跳过则下次登录再提示。 */
+    private void promptBackfillEmail(String publicId, String password) {
+        EditText input = AppUi.input(this, getString(R.string.reg_hint_email));
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        int pad = AppUi.dp(this, 20);
+        wrap.setPadding(pad, AppUi.dp(this, 8), pad, 0);
+        wrap.addView(input);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.reg_backfill_title))
+                .setMessage(getString(R.string.reg_backfill_msg))
+                .setView(wrap)
+                .setPositiveButton(getString(R.string.common_save), (dialog, which) -> {
+                    String email = input.getText().toString().trim();
+                    if (email.isEmpty()) {
+                        openHome();
+                        return;
+                    }
+                    executor.execute(() -> {
+                        try {
+                            new ApiClient(this).setEmail(publicId, password, email);
+                        } catch (Exception ignored) {
+                            // 补填失败不阻断登录，下次登录会再提示。
+                        }
+                        runOnUiThread(this::openHome);
+                    });
+                })
+                .setNegativeButton(getString(R.string.reg_backfill_later), (dialog, which) -> openHome())
+                .setCancelable(false)
+                .show();
     }
 
     private void bindAccount(ApiClient.Account account, String password) {
