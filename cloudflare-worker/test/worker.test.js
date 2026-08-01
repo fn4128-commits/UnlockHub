@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { addOwnerViewer, changeLocalAccountPassword, deleteLocalAccount, listMessages, purgeInactiveAccounts, setLocalAccountEmail, eligibleReportWeek, getReceiverSummary, handleCustomAlert, handleInactivityAlert, handleTestWeeklyReport, handleUnlockEvent, inboxPage, listMessagesForViewer, loginLocalAccount, markMessageReadForViewer, recoverViewerUid, registerLocalAccount, route, runInactivityMonitor } from "../src/worker.js";
+import { addOwnerViewer, changeLocalAccountPassword, deleteLocalAccount, listMessages, purgeInactiveAccounts, setLocalAccountEmail, eligibleReportWeek, getReceiverSummary, handleInactivityAlert, handleTestWeeklyReport, handleUnlockEvent, inboxPage, listMessagesForViewer, loginLocalAccount, markMessageReadForViewer, recoverViewerUid, registerLocalAccount, route, runInactivityMonitor } from "../src/worker.js";
 
 test("eligibleReportWeek uses current week on Sunday", () => {
   const result = eligibleReportWeek(new Date("2026-06-07T00:00:00.000Z"));
@@ -292,19 +292,6 @@ test("new sync report replaces the previous one", async () => {
 });
 
 
-test("custom alerts create a message for the guardian", async () => {
-  const db = new MemoryD1();
-  const result = await handleCustomAlert(db, {
-    deviceId: "device-1",
-    displayName: "Alex",
-    guardianHandle: "mom",
-    text: "已到家，勿念",
-  });
-  assert.equal(result.ok, true);
-  assert.equal(db.messages.length, 1);
-  assert.equal(db.messages[0].type, "custom_alert");
-  assert.equal(db.messages[0].body, "已到家，勿念");
-});
 
 
 

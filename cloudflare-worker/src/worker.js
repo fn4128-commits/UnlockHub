@@ -232,12 +232,6 @@ export async function route(request, env) {
     return json(result);
   }
 
-  if (request.method === "POST" && url.pathname === "/api/custom-alerts") {
-    const payload = await readJson(request);
-    const result = await handleCustomAlert(env.DB, payload);
-    return json(result);
-  }
-
   if (request.method === "POST" && url.pathname === "/api/test-weekly-report") {
     const payload = await readJson(request);
     const result = await handleTestWeeklyReport(env.DB, payload);
@@ -712,29 +706,6 @@ export async function handleTestWeeklyReport(db, payload) {
     body,
   });
   await deleteOldWeeklyReportMessages(db, guardianHandle, deviceId, messageId);
-  return { ok: true, messageId };
-}
-
-/** 自动化规则触发的自定义消息，直接进入查看人的消息列表。 */
-export async function handleCustomAlert(db, payload) {
-  requireFields(payload, ["deviceId", "displayName", "guardianHandle", "text"]);
-
-  const deviceId = String(payload.deviceId);
-  const displayName = String(payload.displayName);
-  const guardianHandle = String(payload.guardianHandle);
-  const receiverAccessKey = payload.receiverAccessKey ? String(payload.receiverAccessKey) : "";
-  const text = String(payload.text).slice(0, 1000);
-  await requireSyncAccess(db, guardianHandle, receiverAccessKey);
-  await ensureReceiverKey(db, guardianHandle, receiverAccessKey);
-
-  const messageId = await createMessage(db, {
-    recipientHandle: guardianHandle,
-    senderDeviceId: deviceId,
-    senderDisplayName: displayName,
-    type: "custom_alert",
-    title: `${displayName} 的自动提醒`,
-    body: text,
-  });
   return { ok: true, messageId };
 }
 
