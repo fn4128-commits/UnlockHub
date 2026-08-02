@@ -90,6 +90,12 @@
     <string name="memoedit_label_type">类型</string>
     <string name="memoedit_type_text">文本</string>
     <string name="memoedit_type_checklist">清单 / 待办</string>
+    <string name="memoedit_label_mode">用途</string>
+    <string name="memoedit_mode_memo">备忘 · 会提醒</string>
+    <string name="memoedit_mode_plain">纯记录 · 不打扰</string>
+    <string name="memoedit_mode_plain_hint">只是写下来存着的一段文本：不提醒、不解锁弹窗、不计入待处理，也不会因为已读满 30 天被自动删除。</string>
+    <string name="memoedit_mode_memo_hint">会按你设定的时间或解锁时提醒你，处理完才安静下来。</string>
+    <string name="memoedit_mode_switched_plain">已转为纯记录：提醒与解锁弹窗已清除。</string>
     <string name="memoedit_label_content">内容</string>
     <string name="memoedit_hint_content">写点什么…</string>
     <string name="memoedit_label_checklist">清单事项</string>
@@ -591,6 +597,7 @@
     <string name="memo_badge_unread">🔴 未读  </string>
     <string name="memo_badge_private">🔒 私密  </string>
     <string name="memo_badge_unlockpopup">🔔 解锁弹窗  </string>
+    <string name="memo_badge_plain">📄 记录  </string>
     <string name="memo_action_pin">置顶</string>
     <string name="memo_action_unpin">取消置顶</string>
     <string name="memo_action_mark_done">标为完成</string>

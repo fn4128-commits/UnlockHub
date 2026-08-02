@@ -21,6 +21,7 @@ import com.jinxin.unlockhub.ui.AppUi;
 import com.jinxin.unlockhub.ui.BaseActivity;
 import com.jinxin.unlockhub.util.MemoLock;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
@@ -334,6 +335,9 @@ public final class MemoActivity extends BaseActivity {
         if (memo.pinned) {
             builder.append(getString(R.string.memo_badge_pinned));
         }
+        if (memo.plainRecord) {
+            builder.append(getString(R.string.memo_badge_plain));
+        }
         if (memo.unread) {
             builder.append(getString(R.string.memo_badge_unread));
         }
@@ -353,28 +357,31 @@ public final class MemoActivity extends BaseActivity {
     }
 
     private void showMemoActions(Memo memo) {
-        String[] actions = new String[]{
-                getString(memo.pinned ? R.string.memo_action_unpin : R.string.memo_action_pin),
-                getString(memo.done ? R.string.memo_action_mark_undone : R.string.memo_action_mark_done),
-                getString(memo.unread ? R.string.memo_action_mark_read : R.string.memo_action_mark_unread),
-                getString(R.string.common_delete)
-        };
+        // 纯记录不参与未读体系，就别给它"标记未读"这个入口——点了也只会造成一个
+        // 显示未读、却不计入待处理的怪状态。
+        final boolean allowUnread = !memo.plainRecord;
+        List<String> actionList = new ArrayList<>();
+        actionList.add(getString(memo.pinned ? R.string.memo_action_unpin : R.string.memo_action_pin));
+        actionList.add(getString(memo.done ? R.string.memo_action_mark_undone : R.string.memo_action_mark_done));
+        if (allowUnread) {
+            actionList.add(getString(memo.unread ? R.string.memo_action_mark_read : R.string.memo_action_mark_unread));
+        }
+        actionList.add(getString(R.string.common_delete));
+        String[] actions = actionList.toArray(new String[0]);
         new AlertDialog.Builder(this)
                 .setTitle(memo.title.isEmpty() ? getString(R.string.memo_actions_title) : memo.title)
                 .setItems(actions, (dialog, which) -> {
-                    switch (which) {
-                        case 0:
-                            repository.setPinned(memo.id, !memo.pinned);
-                            break;
-                        case 1:
-                            repository.setDone(memo.id, !memo.done);
-                            break;
-                        case 2:
-                            repository.setUnread(memo.id, !memo.unread);
-                            break;
-                        case 3:
-                            confirmDelete(memo);
-                            return;
+                    String picked = actions[which];
+                    if (picked.equals(getString(R.string.common_delete))) {
+                        confirmDelete(memo);
+                        return;
+                    }
+                    if (which == 0) {
+                        repository.setPinned(memo.id, !memo.pinned);
+                    } else if (which == 1) {
+                        repository.setDone(memo.id, !memo.done);
+                    } else {
+                        repository.setUnread(memo.id, !memo.unread);
                     }
                     MemoNotifier.updateBadge(this);
                     refresh();

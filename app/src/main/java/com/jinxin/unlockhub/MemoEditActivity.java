@@ -52,6 +52,11 @@ public final class MemoEditActivity extends BaseActivity {
     private Switch privateSwitch;
     private Switch unlockPopupSwitch;
     private TextView unlockPopupHint;
+    private TextView modeMemoChip;
+    private TextView modePlainChip;
+    private TextView modeHint;
+    private LinearLayout scheduleCard;
+    private LinearLayout unlockPopupCard;
 
     private final List<ChecklistRow> checklistRows = new ArrayList<>();
 
@@ -184,8 +189,30 @@ public final class MemoEditActivity extends BaseActivity {
 
         content.addView(card);
 
+        // 用途：备忘（会提醒）还是纯记录（只是写下来存着）。
+        // 新建时在这里选，打开已有备忘改它就等于把它转成纯记录。
+        LinearLayout modeCard = AppUi.createCard(this);
+        modeCard.addView(AppUi.label(this, getString(R.string.memoedit_label_mode)));
+        LinearLayout modeRow = new LinearLayout(this);
+        modeRow.setOrientation(LinearLayout.HORIZONTAL);
+        modeMemoChip = AppUi.weekdayChip(this, getString(R.string.memoedit_mode_memo));
+        modePlainChip = AppUi.weekdayChip(this, getString(R.string.memoedit_mode_plain));
+        modeMemoChip.setOnClickListener(v -> switchMode(false));
+        modePlainChip.setOnClickListener(v -> switchMode(true));
+        LinearLayout.LayoutParams modeParams = new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        modeParams.setMargins(0, 0, AppUi.dp(this, 8), 0);
+        modeRow.addView(modeMemoChip, modeParams);
+        modeRow.addView(modePlainChip, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        modeCard.addView(modeRow);
+        modeHint = AppUi.body(this, "");
+        modeHint.setTextSize(13);
+        modeCard.addView(modeHint);
+        content.addView(modeCard);
+
         // 日期与提醒
-        LinearLayout scheduleCard = AppUi.createCard(this);
+        scheduleCard = AppUi.createCard(this);
         scheduleCard.addView(AppUi.label(this, getString(R.string.memoedit_label_date)));
         dateButton = AppUi.secondaryButton(this, "");
         dateButton.setOnClickListener(v -> pickDate());
@@ -198,7 +225,7 @@ public final class MemoEditActivity extends BaseActivity {
         content.addView(scheduleCard);
 
         // 解锁-弹窗加强提醒：显眼的独立卡片，紧跟时间设置
-        LinearLayout unlockPopupCard = AppUi.createCard(this);
+        unlockPopupCard = AppUi.createCard(this);
         LinearLayout unlockPopupHeader = new LinearLayout(this);
         unlockPopupHeader.setOrientation(LinearLayout.HORIZONTAL);
         unlockPopupHeader.setGravity(Gravity.CENTER_VERTICAL);
@@ -231,6 +258,8 @@ public final class MemoEditActivity extends BaseActivity {
         flagCard.addView(privateSwitch);
         content.addView(flagCard);
 
+        switchMode(memo.plainRecord); // 放在提醒/弹窗/未读控件都建好之后，才能一并收起
+
         Button saveButton = AppUi.primaryButton(this, getString(R.string.common_save));
         saveButton.setOnClickListener(v -> save());
         content.addView(saveButton);
@@ -253,6 +282,29 @@ public final class MemoEditActivity extends BaseActivity {
         switchView.setChecked(checked);
         switchView.setPadding(0, AppUi.dp(this, 10), 0, AppUi.dp(this, 10));
         return switchView;
+    }
+
+    /**
+     * 切换用途。纯记录不需要提醒时间、解锁弹窗和未读态，直接把这几块收起来，
+     * 免得留着一堆点了也不生效的开关。真正的清空在保存时做（见 save 与 MemoRepository.save）。
+     */
+    private void switchMode(boolean plain) {
+        memo.plainRecord = plain;
+        AppUi.styleWeekdayChip(modeMemoChip, !plain);
+        AppUi.styleWeekdayChip(modePlainChip, plain);
+        int visibility = plain ? View.GONE : View.VISIBLE;
+        if (scheduleCard != null) {
+            scheduleCard.setVisibility(visibility);
+        }
+        if (unlockPopupCard != null) {
+            unlockPopupCard.setVisibility(visibility);
+        }
+        if (unreadSwitch != null) {
+            unreadSwitch.setVisibility(visibility);
+        }
+        modeHint.setText(getString(plain
+                ? R.string.memoedit_mode_plain_hint
+                : R.string.memoedit_mode_memo_hint));
     }
 
     private void switchType(boolean checklist) {
@@ -425,12 +477,21 @@ public final class MemoEditActivity extends BaseActivity {
             }
         }
         memo.pinned = pinnedSwitch.isChecked();
-        memo.unread = unreadSwitch.isChecked();
-        memo.unlockPopup = unlockPopupSwitch.isChecked();
-        // 解锁弹窗依赖"未读"态才会进入候选（unlockPopupPending 查询 unread=1）：
-        // 开了解锁弹窗就自动置为未读，确保能弹；用户打开该备忘查看后会自动转已读、停止弹出。
-        if (memo.unlockPopup) {
-            memo.unread = true;
+        // 转成纯记录时，原来设过的提醒/解锁弹窗会被清掉，这是用户看不见的后果，要明说一句。
+        boolean clearedReminder = memo.plainRecord && (memo.remindAt > 0 || memo.unlockPopup);
+        if (memo.plainRecord) {
+            // 这几个控件在纯记录下已经收起来了，不读它们的值。
+            memo.remindAt = 0L;
+            memo.unlockPopup = false;
+            memo.unread = false;
+        } else {
+            memo.unread = unreadSwitch.isChecked();
+            memo.unlockPopup = unlockPopupSwitch.isChecked();
+            // 解锁弹窗依赖"未读"态才会进入候选（unlockPopupPending 查询 unread=1）：
+            // 开了解锁弹窗就自动置为未读，确保能弹；用户打开该备忘查看后会自动转已读、停止弹出。
+            if (memo.unlockPopup) {
+                memo.unread = true;
+            }
         }
 
         boolean wantPrivate = privateSwitch.isChecked();
@@ -441,8 +502,12 @@ public final class MemoEditActivity extends BaseActivity {
         memo.isPrivate = wantPrivate;
 
         repository.save(memo);
+        // remindAt 已归零，schedule() 会据此撤掉之前排的闹钟（见 MemoReminderScheduler.schedule）。
         MemoReminderScheduler.schedule(this, memo);
         MemoNotifier.updateBadge(this);
+        if (clearedReminder) {
+            Toast.makeText(this, getString(R.string.memoedit_mode_switched_plain), Toast.LENGTH_LONG).show();
+        }
 
         if (memo.remindAt > System.currentTimeMillis() && !MemoReminderScheduler.canScheduleExact(this)) {
             new AlertDialog.Builder(this)

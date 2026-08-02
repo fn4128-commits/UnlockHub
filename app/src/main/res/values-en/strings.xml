@@ -90,6 +90,12 @@
     <string name="memoedit_label_type">Type</string>
     <string name="memoedit_type_text">Text</string>
     <string name="memoedit_type_checklist">Checklist / To-do</string>
+    <string name="memoedit_label_mode">Purpose</string>
+    <string name="memoedit_mode_memo">Reminder · nudges you</string>
+    <string name="memoedit_mode_plain">Plain record · stays quiet</string>
+    <string name="memoedit_mode_plain_hint">Just text you wrote down and keep: no reminder, no unlock popup, never counted as pending, and never auto-deleted 30 days after being read.</string>
+    <string name="memoedit_mode_memo_hint">Reminds you at the time you set, or when you unlock, and stays quiet only once you have dealt with it.</string>
+    <string name="memoedit_mode_switched_plain">Turned into a plain record: its reminder and unlock popup were cleared.</string>
     <string name="memoedit_label_content">Content</string>
     <string name="memoedit_hint_content">Write something…</string>
     <string name="memoedit_label_checklist">Checklist items</string>
@@ -591,6 +597,7 @@
     <string name="memo_badge_unread">🔴 Unread  </string>
     <string name="memo_badge_private">🔒 Private  </string>
     <string name="memo_badge_unlockpopup">🔔 Unlock popup  </string>
+    <string name="memo_badge_plain">📄 Record  </string>
     <string name="memo_action_pin">Pin</string>
     <string name="memo_action_unpin">Unpin</string>
     <string name="memo_action_mark_done">Mark as done</string>

@@ -21,6 +21,11 @@ public final class Memo {
     public boolean done;
     public boolean unread;
     public boolean isPrivate;
+    /**
+     * 纯记录：只是写下来存着的一段文本，不承担任何提醒职责。
+     * 为 true 时不提醒、不解锁弹窗、不计入未读/待处理，也不会因为已读满 30 天被自动删除。
+     */
+    public boolean plainRecord;
     public boolean unlockPopup; // 解锁-弹窗加强提醒
     public long lastPopupAt;    // 上次解锁弹窗时间（去重）
     public long readAt;         // 变为已读的时间戳（0=未读）；用于已读 30 天后自动删除

@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public final class AppDatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "safe_ping.db";
-    private static final int DATABASE_VERSION = 7;
+    private static final int DATABASE_VERSION = 8;
 
     public AppDatabaseHelper(Context context) {
         super(context.getApplicationContext(), DATABASE_NAME, null, DATABASE_VERSION);
@@ -68,6 +68,13 @@ public final class AppDatabaseHelper extends SQLiteOpenHelper {
                 // 列已存在
             }
         }
+        if (oldVersion < 8) {
+            try {
+                db.execSQL("ALTER TABLE memos ADD COLUMN plain_record INTEGER NOT NULL DEFAULT 0");
+            } catch (Exception ignored) {
+                // 列已存在
+            }
+        }
     }
 
     private static void createRoutineTable(SQLiteDatabase db) {
@@ -102,6 +109,7 @@ public final class AppDatabaseHelper extends SQLiteOpenHelper {
                 "unlock_popup INTEGER NOT NULL DEFAULT 0, " +     // 解锁-弹窗加强提醒
                 "last_popup_at INTEGER NOT NULL DEFAULT 0, " +    // 上次解锁弹窗时间（去重用）
                 "read_at INTEGER NOT NULL DEFAULT 0, " +          // 变为已读的时间（0=未读；用于已读 30 天自动删除）
+                "plain_record INTEGER NOT NULL DEFAULT 0, " +     // 纯记录：不提醒、不弹窗、不计待处理、不自动删除
                 "created_at INTEGER NOT NULL DEFAULT 0, " +
                 "updated_at INTEGER NOT NULL DEFAULT 0" +
                 ")");
