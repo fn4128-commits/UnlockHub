@@ -212,7 +212,6 @@
     <string name="rt_con_place">, and near \"%1$s\"</string>
     <string name="rt_act_popup">Show popup: %1$s</string>
     <string name="rt_act_notify">Send notification: %1$s</string>
-    <string name="rt_act_memo">Activate memo \"%1$s\"</string>
     <string name="rt_act_open_app">Open \"%1$s\"</string>
     <string name="rt_act_dnd_on">Turn on Do Not Disturb</string>
     <string name="rt_act_dnd_off">Turn off Do Not Disturb</string>
@@ -403,8 +402,6 @@
     <!-- Automation execution -->
     <string name="re_triggered">Automation rule triggered</string>
     <string name="re_app">app</string>
-    <string name="re_memo_title">Memo reminder</string>
-    <string name="re_memo_text">An automation rule activated a memo; please check it.</string>
     <string name="re_open_fail_title">Cannot open app</string>
     <string name="re_open_fail_text">\"%1$s\" may have been uninstalled.</string>
     <string name="re_dnd_fail_title">Do Not Disturb toggle failed</string>
@@ -456,7 +453,6 @@
     <string name="red_c_place">Near a specific place</string>
     <string name="red_a_popup">Popup alert</string>
     <string name="red_a_countdown">Start a countdown</string>
-    <string name="red_a_memo">Activate a memo (unread + badge)</string>
     <string name="red_a_open_app">Open an app</string>
     <string name="red_a_dnd_on">Turn on Do Not Disturb</string>
     <string name="red_a_dnd_off">Turn off Do Not Disturb</string>
@@ -496,13 +492,9 @@
     <string name="red_notify_content">Notification text</string>
     <string name="red_text_hint">Text to display</string>
     <string name="red_hint_popup">Shows a banner while you\'re using the phone and a full-screen popup on the lock screen or right after unlock — far more likely to be seen than a normal notification.</string>
-    <string name="red_memo_is">Memo: %1$s</string>
-    <string name="red_pick_memo">Choose the memo to activate</string>
     <string name="red_pick_open_app">Choose the app to open</string>
     <string name="red_hint_dnd">Needs the system DND permission; you\'ll be prompted when saving.</string>
     <string name="red_pick_app_title">Choose an app</string>
-    <string name="red_no_memo">No memos yet — create one in Memos first</string>
-    <string name="red_pick_memo_title">Choose a memo</string>
     <string name="red_need_loc_retry">Grant location permission first, then tap again</string>
     <string name="red_no_loc">Location isn\'t supported on this device</string>
     <string name="red_getting_loc">Getting current location…</string>
@@ -524,7 +516,6 @@
     <string name="red_need_place">Tap \"Record current location as this place\" first</string>
     <string name="red_need_minutes">Enter a number of minutes between 1 and 1440</string>
     <string name="red_need_text">Enter some text</string>
-    <string name="red_need_memo">Choose the memo to activate</string>
     <string name="red_need_open_app">Choose the app to open</string>
     <string name="red_save_fail">Save failed: %1$s</string>
     <string name="red_saved">Rule saved</string>

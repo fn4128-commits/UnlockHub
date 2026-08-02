@@ -32,7 +32,6 @@ public final class Routine {
     // 动作
     public static final String ACTION_POPUP = "popup";               // {"text":"..."} 全屏弹窗，解锁必见
     public static final String ACTION_NOTIFY = "notify";             // {"text":"..."}
-    public static final String ACTION_ACTIVATE_MEMO = "activate_memo"; // {"memoId":3,"title":"..."}
     public static final String ACTION_OPEN_APP = "open_app";         // {"package":"com.x","label":"某应用"}
     public static final String ACTION_DND_ON = "dnd_on";
     public static final String ACTION_DND_OFF = "dnd_off";
@@ -171,9 +170,6 @@ public final class Routine {
                 return ctx.getString(com.jinxin.unlockhub.R.string.rt_act_popup, action.optString("text", ""));
             case ACTION_NOTIFY:
                 return ctx.getString(com.jinxin.unlockhub.R.string.rt_act_notify, action.optString("text", ""));
-            case ACTION_ACTIVATE_MEMO:
-                return ctx.getString(com.jinxin.unlockhub.R.string.rt_act_memo,
-                        action.optString("title", "#" + action.optLong("memoId", 0)));
             case ACTION_OPEN_APP:
                 return ctx.getString(com.jinxin.unlockhub.R.string.rt_act_open_app,
                         action.optString("label", action.optString("package",

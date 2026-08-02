@@ -23,8 +23,6 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.jinxin.unlockhub.data.Memo;
-import com.jinxin.unlockhub.data.MemoRepository;
 import com.jinxin.unlockhub.data.Routine;
 import com.jinxin.unlockhub.data.RoutineRepository;
 import com.jinxin.unlockhub.routine.ConnectionEventMonitor;
@@ -67,13 +65,11 @@ public final class RoutineEditActivity extends com.jinxin.unlockhub.ui.BaseActiv
 
     private static final String[] ACTION_TYPES = {
             Routine.ACTION_POPUP, Routine.ACTION_COUNTDOWN,
-            Routine.ACTION_ACTIVATE_MEMO,
             Routine.ACTION_OPEN_APP, Routine.ACTION_DND_ON, Routine.ACTION_DND_OFF,
     };
     /** 与 ACTION_TYPES 一一对应的文案资源 id（静态上下文不能 getString，运行时再取）。 */
     private static final int[] ACTION_LABEL_RES = {
             R.string.red_a_popup, R.string.red_a_countdown,
-            R.string.red_a_memo,
             R.string.red_a_open_app, R.string.red_a_dnd_on, R.string.red_a_dnd_off,
     };
 
@@ -132,8 +128,6 @@ public final class RoutineEditActivity extends com.jinxin.unlockhub.ui.BaseActiv
     // 动作参数
     private EditText actionTextInput;
     private EditText actionMinutesInput;
-    private long actionMemoId;
-    private String actionMemoTitle = "";
     private String actionAppPackage = "";
     private String actionAppLabel = "";
 
@@ -185,8 +179,6 @@ public final class RoutineEditActivity extends com.jinxin.unlockhub.ui.BaseActiv
             constraintPlaceRadius = constraint.optInt("radius", 300);
         }
         JSONObject action = routine.actionJson();
-        actionMemoId = action.optLong("memoId", 0);
-        actionMemoTitle = action.optString("title", "");
         actionAppPackage = action.optString("package", "");
         actionAppLabel = action.optString("label", "");
     }
@@ -626,13 +618,6 @@ public final class RoutineEditActivity extends com.jinxin.unlockhub.ui.BaseActiv
                 }
                 break;
             }
-            case Routine.ACTION_ACTIVATE_MEMO: {
-                Button memoButton = AppUi.secondaryButton(this,
-                        actionMemoId > 0 ? getString(R.string.red_memo_is, actionMemoTitle) : getString(R.string.red_pick_memo));
-                memoButton.setOnClickListener(v -> pickMemo());
-                actionParamContainer.addView(memoButton);
-                break;
-            }
             case Routine.ACTION_OPEN_APP: {
                 Button appButton = AppUi.secondaryButton(this,
                         actionAppPackage.isEmpty() ? getString(R.string.red_pick_open_app) : getString(R.string.red_app_is, actionAppLabel));
@@ -811,27 +796,6 @@ public final class RoutineEditActivity extends com.jinxin.unlockhub.ui.BaseActiv
             list.addView(row);
         }
         dialog.show();
-    }
-
-    private void pickMemo() {
-        List<Memo> memos = new MemoRepository(this).listAll(false);
-        if (memos.isEmpty()) {
-            Toast.makeText(this, getString(R.string.red_no_memo), Toast.LENGTH_SHORT).show();
-            return;
-        }
-        String[] titles = new String[memos.size()];
-        for (int i = 0; i < memos.size(); i++) {
-            titles[i] = memos.get(i).title.isEmpty() ? getString(R.string.memo_untitled) : memos.get(i).title;
-        }
-        new AlertDialog.Builder(this)
-                .setTitle(getString(R.string.red_pick_memo_title))
-                .setItems(titles, (dialog, which) -> {
-                    actionMemoId = memos.get(which).id;
-                    actionMemoTitle = titles[which];
-                    renderAll();
-                })
-                .setNegativeButton(getString(R.string.common_cancel), null)
-                .show();
     }
 
     // ---------- 位置 / Wi-Fi / 蓝牙辅助 ----------
@@ -1133,14 +1097,6 @@ public final class RoutineEditActivity extends com.jinxin.unlockhub.ui.BaseActiv
                     action.put("text", text);
                     break;
                 }
-                case Routine.ACTION_ACTIVATE_MEMO:
-                    if (actionMemoId <= 0) {
-                        Toast.makeText(this, getString(R.string.red_need_memo), Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    action.put("memoId", actionMemoId);
-                    action.put("title", actionMemoTitle);
-                    break;
                 case Routine.ACTION_OPEN_APP:
                     if (actionAppPackage.isEmpty()) {
                         Toast.makeText(this, getString(R.string.red_need_open_app), Toast.LENGTH_SHORT).show();
@@ -1179,8 +1135,7 @@ public final class RoutineEditActivity extends com.jinxin.unlockhub.ui.BaseActiv
         List<String> permissions = new ArrayList<>();
         boolean usesNotification = Routine.ACTION_POPUP.equals(routine.actionType)
                 || Routine.ACTION_NOTIFY.equals(routine.actionType)
-                || Routine.ACTION_COUNTDOWN.equals(routine.actionType)
-                || Routine.ACTION_ACTIVATE_MEMO.equals(routine.actionType);
+                || Routine.ACTION_COUNTDOWN.equals(routine.actionType);
         if (usesNotification && android.os.Build.VERSION.SDK_INT >= 33
                 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                         != PackageManager.PERMISSION_GRANTED) {

@@ -8,9 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
-import com.jinxin.unlockhub.MemoNotifier;
 import com.jinxin.unlockhub.R;
-import com.jinxin.unlockhub.data.MemoRepository;
 import com.jinxin.unlockhub.data.Routine;
 
 import org.json.JSONObject;
@@ -33,9 +31,6 @@ public final class RoutineExecutor {
                 case Routine.ACTION_NOTIFY:
                     notifyText(context, routine, action.optString("text", context.getString(com.jinxin.unlockhub.R.string.re_triggered)));
                     break;
-                case Routine.ACTION_ACTIVATE_MEMO:
-                    activateMemo(context, action.optLong("memoId", 0));
-                    break;
                 case Routine.ACTION_OPEN_APP:
                     openApp(context, action.optString("package", ""), action.optString("label", context.getString(com.jinxin.unlockhub.R.string.re_app)), routine);
                     break;
@@ -54,15 +49,6 @@ public final class RoutineExecutor {
             }
         } catch (Exception ignored) {
         }
-    }
-
-    private static void activateMemo(Context context, long memoId) {
-        if (memoId <= 0) {
-            return;
-        }
-        new MemoRepository(context).setUnread(memoId, true);
-        MemoNotifier.updateBadge(context);
-        notifyPlain(context, (int) (ID_BASE + memoId % 500), context.getString(com.jinxin.unlockhub.R.string.re_memo_title), context.getString(com.jinxin.unlockhub.R.string.re_memo_text));
     }
 
     private static void openApp(Context context, String packageName, String label, Routine routine) {

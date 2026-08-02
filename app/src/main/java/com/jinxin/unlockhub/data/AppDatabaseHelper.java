@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public final class AppDatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "safe_ping.db";
-    private static final int DATABASE_VERSION = 8;
+    private static final int DATABASE_VERSION = 9;
 
     public AppDatabaseHelper(Context context) {
         super(context.getApplicationContext(), DATABASE_NAME, null, DATABASE_VERSION);
@@ -75,6 +75,15 @@ public final class AppDatabaseHelper extends SQLiteOpenHelper {
                 // 列已存在
             }
         }
+        if (oldVersion < 9) {
+            // 「激活备忘」动作已移除。留着这类规则只会变成点不动的死数据：
+            // 列表里还显示着，执行时却落到 default 分支什么都不做。
+            try {
+                db.execSQL("DELETE FROM routines WHERE action_type = 'activate_memo'");
+            } catch (Exception ignored) {
+                // 表还不存在（更早的版本），下面 createRoutineTable 会补上
+            }
+        }
     }
 
     private static void createRoutineTable(SQLiteDatabase db) {
@@ -86,7 +95,7 @@ public final class AppDatabaseHelper extends SQLiteOpenHelper {
                 "trigger_param TEXT NOT NULL DEFAULT '', " +  // JSON
                 "constraint_type TEXT NOT NULL DEFAULT '', " + // '' | time_range | charging | not_charging | weekday
                 "constraint_param TEXT NOT NULL DEFAULT '', " +
-                "action_type TEXT NOT NULL, " +            // notify | activate_memo | sync_now | send_message | open_app | dnd_on | dnd_off
+                "action_type TEXT NOT NULL, " +            // popup | notify | countdown | open_app | dnd_on | dnd_off
                 "action_param TEXT NOT NULL DEFAULT '', " +
                 "last_fired_at INTEGER NOT NULL DEFAULT 0, " +
                 "created_at INTEGER NOT NULL DEFAULT 0" +
