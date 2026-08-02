@@ -552,7 +552,8 @@ export async function deleteLocalAccount(db, payload) {
   const publicId = String(payload.publicId || payload.uid || "").trim().toUpperCase();
   if (publicId) {
     const account = await getLocalAccount(db, publicId);
-    if (!account || !(await verifyPassword(password, account.password_salt, account.password_hash))) {
+    if (!account || !(await verifyAccountPassword(
+      db, publicId, password, account.password_salt, account.password_hash))) {
       throw new BadRequest("UID 或密码不正确");
     }
     await deleteAccountData(db, publicId);
@@ -574,6 +575,8 @@ export async function deleteLocalAccount(db, payload) {
     )
     .bind(nickname)
     .all();
+  // 一次核对可能要比对多个同名账号，失败只按「这个昵称」记一笔，不是每个候选记一笔。
+  await guardAccountAuth(db, `nick:${nickname}`);
   const matched = [];
   for (const row of candidates.results || []) {
     if (normalizeEmail(row.email || "") !== email) {
@@ -584,8 +587,10 @@ export async function deleteLocalAccount(db, payload) {
     }
   }
   if (!matched.length) {
+    await noteAuthFailure(db, `nick:${nickname}`);
     throw new BadRequest("昵称、邮箱或密码不正确");
   }
+  await clearAuthFailures(db, `nick:${nickname}`);
   if (matched.length > 1) {
     // 三项全同的账号无法区分，拒绝删除以免误删他人账号。
     throw new BadRequest("匹配到多个账号，请登录后在个人资料中删除");
@@ -1506,7 +1511,8 @@ export async function requireReceiverAccess(db, guardianHandle, accessKey) {
     .bind(guardianHandle)
     .first();
   if (localAccount) {
-    if (!accessKey || !(await verifyPassword(accessKey, localAccount.password_salt, localAccount.password_hash))) {
+    if (!accessKey || !(await verifyAccountPassword(
+      db, guardianHandle, accessKey, localAccount.password_salt, localAccount.password_hash))) {
       throw new BadRequest("UID or password is incorrect");
     }
     return;
@@ -1531,12 +1537,30 @@ export async function requireSyncAccess(db, guardianHandle, accessKey) {
     .prepare("SELECT password_salt, password_hash FROM local_accounts WHERE public_id = ?1")
     .bind(guardianHandle)
     .first();
-  if (!localAccount) {
+  if (localAccount) {
+    if (!accessKey || !(await verifyAccountPassword(
+      db, guardianHandle, accessKey, localAccount.password_salt, localAccount.password_hash))) {
+      throw new BadRequest("UID or password is incorrect");
+    }
     return;
   }
-  if (!accessKey || !(await verifyPassword(accessKey, localAccount.password_salt, localAccount.password_hash))) {
-    throw new BadRequest("UID or password is incorrect");
+
+  // 没有网页账号的 UID：退回访问密钥校验（早于账号体系的老设备走这条）。
+  const existing = await db
+    .prepare("SELECT access_key, access_key_hash, access_key_salt FROM receiver_keys WHERE guardian_handle = ?1")
+    .bind(guardianHandle)
+    .first();
+  if (existing) {
+    if (!(await verifyReceiverKeyRow(db, guardianHandle, existing, accessKey))) {
+      throw new BadRequest("UID or password is incorrect");
+    }
+    return;
   }
+
+  // 服务端从没见过的 UID：以前这里直接放行，谁先写入谁就把它占下（先到先得）。
+  // 意味着猜中一个还没同步过的 UID 就能抢先认领它、往里灌数据，真正的主人之后反而被挡在外面。
+  // 现在一律拒绝：App 同步前必定先走 /api/register 建好账号，正常流程根本到不了这里。
+  throw new BadRequest("此 UID 尚未注册，请先在应用内注册账号后再同步");
 }
 
 export async function registerLocalAccount(db, payload) {
@@ -1586,7 +1610,8 @@ export async function loginLocalAccount(db, payload) {
   let account = null;
   if (publicId) {
     account = await getLocalAccount(db, publicId);
-    if (account && !(await verifyPassword(password, account.password_salt, account.password_hash))) {
+    if (account && !(await verifyAccountPassword(
+      db, publicId, password, account.password_salt, account.password_hash))) {
       account = null;
     }
   } else if (nickname) {
@@ -1651,6 +1676,8 @@ export async function recoverViewerUid(db, payload) {
     .bind(email)
     .all();
   const rows = candidates.results || [];
+  // 同上：按「这个邮箱」记失败，而不是按每个候选账号。
+  await guardAccountAuth(db, `mail:${email}`);
   const matched = [];
   for (const row of rows) {
     if (!(await verifyPassword(password, row.password_salt, row.password_hash))) {
@@ -1664,8 +1691,10 @@ export async function recoverViewerUid(db, payload) {
     }
   }
   if (!matched.length) {
+    await noteAuthFailure(db, `mail:${email}`);
     throw new BadRequest("信息不匹配：请确认密码、邮箱，以及该同步对象与你确有关联");
   }
+  await clearAuthFailures(db, `mail:${email}`);
   if (matched.length > 1) {
     throw new BadRequest("匹配到多个账号，请联系对方确认");
   }
@@ -1715,12 +1744,19 @@ async function findLocalAccountForNicknameLogin(db, nickname, password, email = 
   if (!accounts.length) {
     return null;
   }
+  // 昵称登录同样可能比对多个同名账号，失败按「这个昵称」记一笔。
+  await guardAccountAuth(db, `nick:${nickname}`);
   const matches = [];
   for (const account of accounts) {
     if (await verifyPassword(password, account.password_salt, account.password_hash)) {
       matches.push(account);
     }
   }
+  if (!matches.length) {
+    await noteAuthFailure(db, `nick:${nickname}`);
+    return null;
+  }
+  await clearAuthFailures(db, `nick:${nickname}`);
   if (matches.length === 1) {
     return matches[0];
   }
@@ -1759,7 +1795,8 @@ export async function setLocalAccountEmail(db, payload) {
     throw new BadRequest("请填写电子邮箱");
   }
   const account = await getLocalAccount(db, publicId);
-  if (!account || !(await verifyPassword(password, account.password_salt, account.password_hash))) {
+  if (!account || !(await verifyAccountPassword(
+    db, publicId, password, account.password_salt, account.password_hash))) {
     throw new BadRequest("UID 或密码不正确");
   }
   if (normalizeEmail(account.email || "")) {
@@ -1790,7 +1827,8 @@ export async function changeLocalAccountPassword(db, payload) {
     .prepare("SELECT public_id, nickname, password_salt, password_hash FROM local_accounts WHERE public_id = ?1")
     .bind(publicId)
     .first();
-  if (!account || !(await verifyPassword(currentPassword, account.password_salt, account.password_hash))) {
+  if (!account || !(await verifyAccountPassword(
+    db, publicId, currentPassword, account.password_salt, account.password_hash))) {
     throw new BadRequest("UID or current password is incorrect");
   }
 
@@ -1952,7 +1990,8 @@ async function verifyViewerCredentials(db, viewerPublicId, password) {
     throw new BadRequest("请先登录查看账号");
   }
   const account = await getLocalAccount(db, viewerPublicId);
-  if (!account || !(await verifyPassword(password, account.password_salt, account.password_hash))) {
+  if (!account || !(await verifyAccountPassword(
+    db, viewerPublicId, password, account.password_salt, account.password_hash))) {
     throw new BadRequest("查看账号 UID 或密码不正确");
   }
   // 不再限制角色：手机端注册(owner)与网页注册(viewer)的账号都能查看别人，
@@ -2144,6 +2183,91 @@ function clientBucket(request, tag) {
   return `${tag}:${ip}`;
 }
 
+// ---------- 按账号计的失败限流 ----------
+// 上面的 IP 限流换个 IP 就绕过去了，这一层不会：无论请求来自哪里，冲着同一个账号连续猜错
+// 到上限就先停一会儿。只计失败、成功即清零，正常用户几乎撞不到。
+// 代价是别人可以靠连续输错把某个账号短暂卡住，所以额度给得宽、窗口给得短。
+const ACCOUNT_FAIL_LIMIT = 20;
+const ACCOUNT_FAIL_WINDOW_SEC = 900;
+
+function accountBucket(accountKey) {
+  return `acct:${String(accountKey || "").trim().toUpperCase()}`;
+}
+
+/** 校验前先看这个账号是不是已经被猜太多次了。超限抛 429。 */
+async function guardAccountAuth(db, accountKey) {
+  if (!String(accountKey || "").trim()) {
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    const row = await db
+      .prepare("SELECT count, window_start FROM auth_attempts WHERE bucket = ?1")
+      .bind(accountBucket(accountKey))
+      .first();
+    if (!row || now - Number(row.window_start) >= ACCOUNT_FAIL_WINDOW_SEC) {
+      return;
+    }
+    if (Number(row.count) >= ACCOUNT_FAIL_LIMIT) {
+      throw new TooManyRequests("该账号尝试过于频繁，请稍后再试");
+    }
+  } catch (error) {
+    if (error instanceof TooManyRequests) {
+      throw error;
+    }
+    // 限流表故障不阻断正常使用（与 checkRateLimit 一致）。
+  }
+}
+
+async function noteAuthFailure(db, accountKey) {
+  if (!String(accountKey || "").trim()) {
+    return;
+  }
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    const bucket = accountBucket(accountKey);
+    const row = await db
+      .prepare("SELECT count, window_start FROM auth_attempts WHERE bucket = ?1")
+      .bind(bucket)
+      .first();
+    const fresh = !row || now - Number(row.window_start) >= ACCOUNT_FAIL_WINDOW_SEC;
+    await db
+      .prepare(
+        `INSERT INTO auth_attempts(bucket, count, window_start) VALUES(?1, 1, ?2)
+         ON CONFLICT(bucket) DO UPDATE SET
+           count = CASE WHEN ?3 THEN 1 ELSE count + 1 END,
+           window_start = CASE WHEN ?3 THEN ?2 ELSE window_start END`
+      )
+      .bind(bucket, now, fresh ? 1 : 0)
+      .run();
+  } catch (error) {
+    // 记不上就算了，不能因此挡住请求。
+  }
+}
+
+async function clearAuthFailures(db, accountKey) {
+  if (!String(accountKey || "").trim()) {
+    return;
+  }
+  try {
+    await db.prepare("DELETE FROM auth_attempts WHERE bucket = ?1").bind(accountBucket(accountKey)).run();
+  } catch (error) {
+    // 同上。
+  }
+}
+
+/** 校验某账号的密码，并把结果计进该账号的失败桶。单账号场景用这个。 */
+async function verifyAccountPassword(db, accountKey, password, saltBase64, expectedHash) {
+  await guardAccountAuth(db, accountKey);
+  const ok = await verifyPassword(password, saltBase64, expectedHash);
+  if (ok) {
+    await clearAuthFailures(db, accountKey);
+  } else {
+    await noteAuthFailure(db, accountKey);
+  }
+  return ok;
+}
+
 // ---------- receiver_key 哈希（与账号密码同强度；兼容旧明文并自动升级）----------
 
 async function makeReceiverKeyHash(accessKey) {
@@ -2157,7 +2281,9 @@ async function verifyReceiverKeyRow(db, guardianHandle, row, accessKey) {
     return false;
   }
   if (row.access_key_hash && row.access_key_salt) {
-    return await verifyPassword(accessKey, row.access_key_salt, row.access_key_hash);
+    // 走账号失败桶：没有网页账号的 UID 同样要防换 IP 爆破访问密钥。
+    return await verifyAccountPassword(
+      db, guardianHandle, accessKey, row.access_key_salt, row.access_key_hash);
   }
   // 旧明文行：常量时间比较；命中则原地升级为哈希，并清空明文。
   if (row.access_key != null && row.access_key !== "") {

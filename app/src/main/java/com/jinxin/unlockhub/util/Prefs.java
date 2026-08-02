@@ -94,12 +94,28 @@ public final class Prefs {
         prefs(context).edit().putString(KEY_GUARDIAN_HANDLE, value.trim()).apply();
     }
 
+    /**
+     * 账号密码。每次同步都要发给服务端校验，所以本地必须留着原值，但**落盘时用
+     * Keystore 密钥加密**（见 {@link SecretStore}），拷走数据目录也读不出来。
+     * 旧版本存的是明文，读到时就地升级成密文。
+     */
     public static String receiverAccessKey(Context context) {
-        return prefs(context).getString(KEY_RECEIVER_ACCESS_KEY, "");
+        String stored = prefs(context).getString(KEY_RECEIVER_ACCESS_KEY, "");
+        if (stored == null || stored.isEmpty()) {
+            return "";
+        }
+        if (!SecretStore.isEncrypted(stored)) {
+            setReceiverAccessKey(context, stored); // 旧明文 → 升级
+            return stored;
+        }
+        String plain = SecretStore.decrypt(context, stored);
+        return plain == null ? "" : plain;
     }
 
     public static void setReceiverAccessKey(Context context, String value) {
-        prefs(context).edit().putString(KEY_RECEIVER_ACCESS_KEY, value.trim()).apply();
+        String trimmed = value == null ? "" : value.trim();
+        String toStore = trimmed.isEmpty() ? "" : SecretStore.encrypt(context, trimmed);
+        prefs(context).edit().putString(KEY_RECEIVER_ACCESS_KEY, toStore).apply();
     }
 
     private static final String DEFAULT_BACKEND_URL = "https://safeping.unlockhub.workers.dev";

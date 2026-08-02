@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { addOwnerViewer, changeLocalAccountPassword, deleteLocalAccount, listMessages, purgeInactiveAccounts, setLocalAccountEmail, eligibleReportWeek, getReceiverSummary, handleInactivityAlert, handleTestWeeklyReport, handleUnlockEvent, inboxPage, listMessagesForViewer, loginLocalAccount, markMessageReadForViewer, recoverViewerUid, registerLocalAccount, route, runInactivityMonitor } from "../src/worker.js";
+import { addOwnerViewer, changeLocalAccountPassword, deleteLocalAccount, ensureReceiverKey, listMessages, purgeInactiveAccounts, setLocalAccountEmail, eligibleReportWeek, getReceiverSummary, handleInactivityAlert, handleTestWeeklyReport, handleUnlockEvent, inboxPage, listMessagesForViewer, loginLocalAccount, markMessageReadForViewer, recoverViewerUid, registerLocalAccount, route, runInactivityMonitor } from "../src/worker.js";
+
+// 同步前必须先有账号或访问密钥——服务端不再接受「没见过的 UID 空手认领」。
+// 这些用例模拟的是账号体系之前就存在的老设备，所以先给它一把访问密钥。
+const LEGACY_KEY = "family-key-123";
+async function seedLegacyReceiver(db, handle) {
+  await ensureReceiverKey(db, handle, LEGACY_KEY);
+}
 
 test("eligibleReportWeek uses current week on Sunday", () => {
   const result = eligibleReportWeek(new Date("2026-06-07T00:00:00.000Z"));
@@ -241,10 +248,12 @@ test("reinstalled app can sync with same uid on a new device id", async () => {
 
 test("unlock events create one sync report message", async () => {
   const db = new MemoryD1();
+  await seedLegacyReceiver(db, "mom");
   const syncPayload = {
     deviceId: "device-1",
     displayName: "Alex",
     guardianHandle: "mom",
+    receiverAccessKey: LEGACY_KEY,
     syncMode: "weekday",
     syncWeekdaysMask: 64,
     syncIntervalDays: 7,
@@ -265,10 +274,12 @@ test("unlock events create one sync report message", async () => {
 
 test("new sync report replaces the previous one", async () => {
   const db = new MemoryD1();
+  await seedLegacyReceiver(db, "mom");
   const syncPayload = {
     deviceId: "device-1",
     displayName: "Alex",
     guardianHandle: "mom",
+    receiverAccessKey: LEGACY_KEY,
     syncMode: "weekday",
     syncWeekdaysMask: 64,
     syncIntervalDays: 7,
@@ -297,10 +308,12 @@ test("new sync report replaces the previous one", async () => {
 
 test("inactivity alerts are deduplicated", async () => {
   const db = new MemoryD1();
+  await seedLegacyReceiver(db, "mom");
   const payload = {
     deviceId: "device-1",
     displayName: "Alex",
     guardianHandle: "mom",
+    receiverAccessKey: LEGACY_KEY,
     lastActivityAt: "2026-06-01T08:00:00+08:00",
     inactiveHours: 72,
   };
@@ -315,10 +328,12 @@ test("inactivity alerts are deduplicated", async () => {
 
 test("scheduled monitor creates alert when cloud sees 72 hours of silence", async () => {
   const db = new MemoryD1();
+  await seedLegacyReceiver(db, "mom");
   await handleUnlockEvent(db, {
     deviceId: "device-1",
     displayName: "Alex",
     guardianHandle: "mom",
+    receiverAccessKey: LEGACY_KEY,
     localDate: "2026-06-01",
     firstUnlockAt: "2026-06-01T08:00:00+08:00",
     syncMode: "weekday",
@@ -337,11 +352,13 @@ test("scheduled monitor creates alert when cloud sees 72 hours of silence", asyn
 test("route returns receiver messages for allowed viewers", async () => {
   const db = new MemoryD1();
   const viewer = await registerLocalAccount(db, { nickname: "妈妈", email: "t@example.com", password: "secret2345", role: "viewer" });
+  await seedLegacyReceiver(db, "mom");
   await addOwnerViewer(db, "mom", "妈妈");
   await handleInactivityAlert(db, {
     deviceId: "device-1",
     displayName: "Alex",
     guardianHandle: "mom",
+    receiverAccessKey: LEGACY_KEY,
     lastActivityAt: "2026-06-01T08:00:00+08:00",
     inactiveHours: 72,
   });
@@ -361,12 +378,13 @@ test("route returns receiver messages for allowed viewers", async () => {
 
 test("route returns receiver unlock records", async () => {
   const db = new MemoryD1();
-  // 记录端首次同步时设置 receiver 访问密钥（TOFU）。
+  // 这个 UID 已经有访问密钥，同步时必须带上它。
+  await seedLegacyReceiver(db, "mom");
   await handleUnlockEvent(db, {
     deviceId: "device-1",
     displayName: "Alex",
     guardianHandle: "mom",
-    receiverAccessKey: "family-key-123",
+    receiverAccessKey: LEGACY_KEY,
     localDate: "2026-06-01",
     firstUnlockAt: "2026-06-01T08:00:00+08:00",
   });
@@ -389,10 +407,12 @@ test("route returns receiver unlock records", async () => {
 
 test("summary reports active and inactive states", async () => {
   const db = new MemoryD1();
+  await seedLegacyReceiver(db, "mom");
   await handleUnlockEvent(db, {
     deviceId: "device-1",
     displayName: "Alex",
     guardianHandle: "mom",
+    receiverAccessKey: LEGACY_KEY,
     localDate: "2026-06-01",
     firstUnlockAt: "2026-06-01T08:00:00+08:00",
   });
@@ -486,10 +506,12 @@ test("viewer read status is tracked per nickname", async () => {
 
 test("test weekly report creates a visible message from existing records", async () => {
   const db = new MemoryD1();
+  await seedLegacyReceiver(db, "mom");
   await handleUnlockEvent(db, {
     deviceId: "device-1",
     displayName: "Alex",
     guardianHandle: "mom",
+    receiverAccessKey: LEGACY_KEY,
     localDate: "2026-06-01",
     firstUnlockAt: "2026-06-01T08:00:00+08:00",
     syncMode: "weekday",
@@ -500,6 +522,7 @@ test("test weekly report creates a visible message from existing records", async
     deviceId: "device-1",
     displayName: "Alex",
     guardianHandle: "mom",
+    receiverAccessKey: LEGACY_KEY,
   });
 
   assert.equal(result.ok, true);
@@ -520,6 +543,7 @@ class MemoryD1 {
     this.sessions = new Map();
     this.ownerViewers = [];
     this.messageReads = [];
+    this.authAttempts = new Map();
     this.nextMessageId = 1;
     this.nextOwnerViewerId = 1;
   }
@@ -544,6 +568,28 @@ class Statement {
   async run() {
     const sql = this.sql;
     const values = this.values;
+    // 限流计数表：不实现它，按账号计失败这套控制在测试里就是空跑。
+    if (sql.startsWith("INSERT INTO auth_attempts")) {
+      const [bucket, windowStart, resetFlag] = values;
+      const existing = this.db.authAttempts.get(bucket);
+      // checkRateLimit 的写法固定重置为 1；noteAuthFailure 由第三个参数决定重置还是累加。
+      const reset = values.length < 3 ? true : Boolean(Number(resetFlag));
+      if (!existing || reset) {
+        this.db.authAttempts.set(bucket, { bucket, count: 1, window_start: windowStart });
+      } else {
+        existing.count += 1;
+      }
+      return { success: true };
+    }
+    if (sql.startsWith("UPDATE auth_attempts SET count = count + 1")) {
+      const existing = this.db.authAttempts.get(values[0]);
+      if (existing) existing.count += 1;
+      return { success: true };
+    }
+    if (sql.startsWith("DELETE FROM auth_attempts")) {
+      this.db.authAttempts.delete(values[0]);
+      return { success: true };
+    }
     if (sql.startsWith("INSERT INTO users")) {
       const publicId = values[1] || null;
       if (publicId) {
@@ -885,6 +931,9 @@ class Statement {
   async first() {
     const sql = this.sql;
     const values = this.values;
+    if (sql.startsWith("SELECT count, window_start FROM auth_attempts")) {
+      return this.db.authAttempts.get(values[0]) || null;
+    }
     if (sql.startsWith("SELECT device_id FROM users") && sql.includes("device_id <>")) {
       const deviceId = values[0];
       const lookupId = String(values[1] || "").toUpperCase();
@@ -1335,4 +1384,99 @@ test("delete is refused when nickname, email and password all match several acco
     /多个账号/
   );
   assert.equal(db.localAccounts.size, 2, "both accounts are kept");
+});
+
+test("guessing one account's password is capped no matter which IP it comes from", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, {
+    nickname: "Target",
+    email: "target@example.com",
+    password: "correct-horse",
+  });
+
+  // 这里完全不经过 route()，也就没有任何 IP 参与：拦截必须来自账号本身，
+  // 否则攻击者换一个 IP 就能接着猜。
+  let rejected = 0;
+  let throttledAt = 0;
+  for (let i = 1; i <= 25; i++) {
+    try {
+      await loginLocalAccount(db, { publicId: account.publicId, password: `wrong-${i}` });
+    } catch (error) {
+      rejected++;
+      if (/频繁/.test(error.message)) {
+        throttledAt = throttledAt || i;
+        break;
+      }
+    }
+  }
+  assert.equal(rejected > 0, true, "wrong passwords are rejected");
+  assert.equal(throttledAt > 0, true, "the account gets throttled");
+  assert.equal(throttledAt <= 21, true, `throttled after ${throttledAt} tries`);
+
+  // 正确密码在限流窗口内同样被挡住——这是这套机制的代价，要清楚它确实如此。
+  await assert.rejects(
+    () => loginLocalAccount(db, { publicId: account.publicId, password: "correct-horse" }),
+    /频繁/
+  );
+});
+
+test("a successful login clears the account's failure count", async () => {
+  const db = new MemoryD1();
+  const account = await registerLocalAccount(db, {
+    nickname: "Clears",
+    email: "clears@example.com",
+    password: "correct-horse",
+  });
+
+  for (let i = 0; i < 5; i++) {
+    await assert.rejects(() => loginLocalAccount(db, { publicId: account.publicId, password: "nope" }));
+  }
+  const ok = await loginLocalAccount(db, { publicId: account.publicId, password: "correct-horse" });
+  assert.equal(ok.publicId, account.publicId);
+
+  // 清零后又能重新累积，不会因为之前失败过就永久接近上限。
+  for (let i = 0; i < 19; i++) {
+    await assert.rejects(() => loginLocalAccount(db, { publicId: account.publicId, password: "nope" }));
+  }
+  const stillCounting = await loginLocalAccount(db, { publicId: account.publicId, password: "correct-horse" })
+    .then(() => true)
+    .catch((error) => !/频繁/.test(error.message));
+  assert.equal(stillCounting, true, "19 failures after a reset is still under the limit");
+});
+
+test("a uid the server has never seen cannot be claimed by just writing to it", async () => {
+  const db = new MemoryD1();
+
+  // 以前这里是先到先得：猜中一个还没同步过的 UID，第一个写进去的人就把它占下了，
+  // 真正的主人之后反而会被自己的 UID 拒之门外。
+  await assert.rejects(
+    () =>
+      handleUnlockEvent(db, {
+        deviceId: "attacker-device",
+        displayName: "Squatter",
+        guardianHandle: "SP-NEVE-RSEEN",
+        receiverAccessKey: "attacker-picked-this",
+        localDate: "2026-06-01",
+        firstUnlockAt: "2026-06-01T08:00:00+08:00",
+      }),
+    /尚未注册/
+  );
+  assert.equal(db.unlockEvents.length, 0, "nothing is written for an unknown uid");
+  assert.equal(db.receiverKeys.has("SP-NEVE-RSEEN"), false, "no key is claimed either");
+
+  // 正常路径不受影响：先注册，再用账号密码同步。
+  const account = await registerLocalAccount(db, {
+    nickname: "Owner",
+    email: "owner@example.com",
+    password: "secret1234",
+  });
+  const ok = await handleUnlockEvent(db, {
+    deviceId: "owner-device",
+    displayName: "Owner",
+    guardianHandle: account.publicId,
+    receiverAccessKey: "secret1234",
+    localDate: "2026-06-01",
+    firstUnlockAt: "2026-06-01T08:00:00+08:00",
+  });
+  assert.equal(ok.ok, true);
 });

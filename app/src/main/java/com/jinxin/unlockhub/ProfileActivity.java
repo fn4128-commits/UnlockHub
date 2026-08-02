@@ -196,7 +196,9 @@ public final class ProfileActivity extends com.jinxin.unlockhub.ui.BaseActivity 
     private void refreshProfile() {
         nicknameText.setText(Prefs.displayName(this));
         uidText.setText("UID: " + Prefs.publicId(this));
-        currentPasswordInput.setText(Prefs.receiverAccessKey(this));
+        // 不回填当前密码：改密码和删除账号都是要害操作，让用户亲手输一遍才算确认本人在操作，
+        // 也免得密码就这么摊在屏幕上。
+        currentPasswordInput.setText("");
     }
 
     private void changePassword() {
@@ -219,7 +221,7 @@ public final class ProfileActivity extends com.jinxin.unlockhub.ui.BaseActivity 
                 runOnUiThread(() -> {
                     newPasswordInput.setText("");
                     confirmPasswordInput.setText("");
-                    currentPasswordInput.setText(newPassword);
+                    currentPasswordInput.setText("");
                     setStatus(getString(R.string.pf_pw_updated));
                 });
             } catch (Exception e) {
