@@ -138,8 +138,8 @@ public final class MemoEditActivity extends BaseActivity {
         typeRow.setOrientation(LinearLayout.HORIZONTAL);
         typeTextChip = AppUi.weekdayChip(this, getString(R.string.memoedit_type_text));
         typeChecklistChip = AppUi.weekdayChip(this, getString(R.string.memoedit_type_checklist));
-        typeTextChip.setOnClickListener(v -> switchType(false));
-        typeChecklistChip.setOnClickListener(v -> switchType(true));
+        typeTextChip.setOnClickListener(v -> changeType(false));
+        typeChecklistChip.setOnClickListener(v -> changeType(true));
         LinearLayout.LayoutParams typeParams = new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         typeParams.setMargins(0, 0, AppUi.dp(this, 8), 0);
@@ -307,6 +307,65 @@ public final class MemoEditActivity extends BaseActivity {
                 : R.string.memoedit_mode_memo_hint));
     }
 
+    /** 已勾选条目转成文本时的行首标记；转回清单时据此还原勾选，往返不丢状态。 */
+    private static final String DONE_LINE_PREFIX = "✓ ";
+
+    /**
+     * 用户点类型按钮：把已经写好的内容搬到另一种形态里再切换。
+     *
+     * 只切显示是不够的——保存时文本型只读 contentInput、清单型只读那些行，
+     * 内容没搬过去的话，另一边是空的，一保存就把原来写的东西覆盖没了。
+     */
+    private void changeType(boolean toChecklist) {
+        if (memo.isChecklist() == toChecklist) {
+            return;
+        }
+        if (toChecklist) {
+            // 文本 → 清单：每一行非空文字变成一个条目，行首的 ✓ 还原成已勾选。
+            String text = contentInput.getText().toString();
+            clearChecklistRows();
+            for (String line : text.split("\\r?\\n")) {
+                String item = line.trim();
+                if (item.isEmpty()) {
+                    continue;
+                }
+                boolean checked = item.startsWith(DONE_LINE_PREFIX);
+                if (checked) {
+                    item = item.substring(DONE_LINE_PREFIX.length()).trim();
+                }
+                if (!item.isEmpty()) {
+                    addChecklistRow(item, checked);
+                }
+            }
+            contentInput.setText("");
+        } else {
+            // 清单 → 文本：每个条目一行，已勾选的加 ✓ 前缀，免得完成状态无声消失。
+            StringBuilder builder = new StringBuilder();
+            for (ChecklistRow row : checklistRows) {
+                String item = row.input.getText().toString().trim();
+                if (item.isEmpty()) {
+                    continue;
+                }
+                if (builder.length() > 0) {
+                    builder.append('\n');
+                }
+                if (row.checkBox.isChecked()) {
+                    builder.append(DONE_LINE_PREFIX);
+                }
+                builder.append(item);
+            }
+            contentInput.setText(builder.toString());
+            clearChecklistRows();
+        }
+        switchType(toChecklist);
+    }
+
+    private void clearChecklistRows() {
+        checklistContainer.removeAllViews();
+        checklistRows.clear();
+    }
+
+    /** 只负责类型状态与显隐；初始化时用它，不做内容搬运（那时两边本来就是对的）。 */
     private void switchType(boolean checklist) {
         memo.type = checklist ? Memo.TYPE_CHECKLIST : Memo.TYPE_TEXT;
         AppUi.styleWeekdayChip(typeTextChip, !checklist);
