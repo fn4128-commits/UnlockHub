@@ -33,15 +33,28 @@ export async function route(request, env) {
   const url = new URL(request.url);
   await ensureSecuritySchema(env.DB);
 
-  // 认证类接口按 IP 限流（防暴力破解）：每 5 分钟最多 15 次。
+  // 凡是会校验密码的接口都要限流。每次校验都是一次 10 万轮 PBKDF2：不限流的话，
+  // 既可以拿一个 UID 慢速爆破密码，也可以纯粹用它把 Worker 的 CPU 打满。
+  // 认证类（注册/登录/找回/改密/删号/补邮箱）收得最紧。
   if (request.method === "POST" && (
     url.pathname === "/api/register" ||
     url.pathname === "/api/login" ||
     url.pathname === "/api/recover-uid" ||
     url.pathname === "/api/change-password" ||
-    url.pathname === "/api/delete-account"
+    url.pathname === "/api/delete-account" ||
+    url.pathname === "/api/set-email"
   )) {
     await checkRateLimit(env.DB, clientBucket(request, "auth"), 15, 300);
+  } else if (
+    url.pathname === "/api/messages" ||
+    url.pathname === "/api/summary" ||
+    url.pathname === "/api/unlock-events" ||
+    url.pathname === "/api/viewers" ||
+    url.pathname.startsWith("/api/viewers/") ||
+    url.pathname.startsWith("/api/messages/")
+  ) {
+    // 状态页正常翻看一次是 3 个请求，这个额度够用又能挡住爆破。
+    await checkRateLimit(env.DB, clientBucket(request, "data"), 120, 300);
   }
 
   if (request.method === "GET" && url.pathname === "/") {

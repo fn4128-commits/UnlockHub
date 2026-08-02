@@ -32,6 +32,7 @@ public final class UnlockListenRegistrar {
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     private static final long KEYGUARD_POLL_MS = 1000L;
     private static final int KEYGUARD_POLL_MAX = 45; // 最多观察 ~45 秒
+    private static final long RECENT_UNLOCK_WINDOW_MS = 60_000L; // 核实"刚刚是否真解锁过"的回看窗口
     private static BroadcastReceiver screenReceiver;
     private static Handler keyguardHandler;
     private static boolean firedThisWake; // 本次亮屏周期是否已触发过解锁处理
@@ -77,7 +78,13 @@ public final class UnlockListenRegistrar {
         }
     }
 
-    /** SCREEN_ON 后每秒查锁屏状态，检测到"未锁"即触发一次解锁处理；息屏/超时/已触发则停止。 */
+    /**
+     * SCREEN_ON 后每秒查锁屏状态，观察到"由锁到不锁"即触发一次解锁处理；息屏/超时/已触发则停止。
+     *
+     * 注意"一上来就没锁"不能直接当解锁：有锁屏的设备在熄屏宽限期内（如三星默认「熄屏 5 秒后才上锁」）
+     * 按亮屏幕也是不锁状态，用户根本没有解锁。那种情况下记录的是"屏幕亮着"这个状态而不是解锁事件，
+     * 熬夜跨零点时会把新一天的首解记错，所以要再用系统历史核实一次。
+     */
     private static void startKeyguardWatch(Context context) {
         final Context app = context.getApplicationContext();
         if (keyguardHandler == null) {
@@ -86,20 +93,31 @@ public final class UnlockListenRegistrar {
         keyguardHandler.removeCallbacksAndMessages(null);
         final KeyguardManager km = (KeyguardManager) app.getSystemService(Context.KEYGUARD_SERVICE);
         final int[] attempts = {0};
+        final boolean[] sawLocked = {false};
         keyguardHandler.post(new Runnable() {
             @Override
             public void run() {
                 if (firedThisWake || Prefs.isPaused(app)) {
                     return;
                 }
-                boolean locked = km != null && km.isKeyguardLocked();
-                if (!locked) {
-                    fireUnlockOnce(app, "screen_on_unlocked");
+                if (km != null && km.isKeyguardLocked()) {
+                    sawLocked[0] = true;
+                    if (++attempts[0] < KEYGUARD_POLL_MAX && keyguardHandler != null) {
+                        keyguardHandler.postDelayed(this, KEYGUARD_POLL_MS);
+                    }
                     return;
                 }
-                if (++attempts[0] < KEYGUARD_POLL_MAX && keyguardHandler != null) {
-                    keyguardHandler.postDelayed(this, KEYGUARD_POLL_MS);
+                if (sawLocked[0]) {
+                    fireUnlockOnce(app, "keyguard_unlocked"); // 亲眼看到锁屏被解开＝真解锁
+                    return;
                 }
+                // 一上来就没锁：无锁屏的设备本就没有"解锁"这一步，亮屏即可用，照记；
+                // 有锁屏的设备则要系统历史确实有刚发生的解锁才算，否则只是宽限期内亮屏。
+                if (km != null && km.isDeviceSecure()
+                        && !UsageUnlockBackfill.hasRecentUnlockEvidence(app, RECENT_UNLOCK_WINDOW_MS)) {
+                    return;
+                }
+                fireUnlockOnce(app, "screen_on_unlocked");
             }
         });
     }

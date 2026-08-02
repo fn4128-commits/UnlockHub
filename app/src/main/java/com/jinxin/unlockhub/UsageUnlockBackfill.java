@@ -1,5 +1,6 @@
 package com.jinxin.unlockhub;
 
+import android.app.KeyguardManager;
 import android.app.usage.UsageEvents;
 import android.app.usage.UsageStatsManager;
 import android.content.Context;
@@ -68,7 +69,17 @@ public final class UsageUnlockBackfill {
         return true;
     }
 
-    /** 从 UsageStats 历史中取今天最早的解锁时刻：KEYGUARD_HIDDEN 优先，其次亮屏，再次首个前台应用。 */
+    /**
+     * 今天最早的**真正解锁**时刻。
+     *
+     * 只认 KEYGUARD_HIDDEN（锁屏被解开）。没有锁屏的设备（isDeviceSecure()==false）本来就不存在
+     * "解锁"这一步，才退而认亮屏 SCREEN_INTERACTIVE——对这类设备亮屏即等于可用。
+     *
+     * 绝不使用"首个前台应用"这类活动痕迹：那记录的是"在用手机"这个**状态**，不是解锁**事件**。
+     * 熬夜跨零点时屏幕一直亮着，新的一天根本没有发生解锁，却会因为切了个 App 就被误记成当天首解。
+     *
+     * @return 今日首次解锁时刻；今天确实还没解锁则返回 0（宁可不记，也不记错）。
+     */
     private static long firstUnlockTimestampToday(Context context, long now) {
         UsageStatsManager usm =
                 (UsageStatsManager) context.getSystemService(Context.USAGE_STATS_SERVICE);
@@ -85,9 +96,9 @@ public final class UsageUnlockBackfill {
         if (events == null) {
             return 0L;
         }
+        boolean deviceSecure = isDeviceSecure(context);
         long firstKeyguardHidden = 0L;
         long firstScreenInteractive = 0L;
-        long firstForeground = 0L;
         UsageEvents.Event event = new UsageEvents.Event();
         while (events.hasNextEvent()) {
             events.getNextEvent(event);
@@ -100,23 +111,60 @@ public final class UsageUnlockBackfill {
                 if (firstKeyguardHidden == 0L || ts < firstKeyguardHidden) {
                     firstKeyguardHidden = ts;
                 }
-            } else if (type == SCREEN_INTERACTIVE) {
+            } else if (type == SCREEN_INTERACTIVE && !deviceSecure) {
                 if (firstScreenInteractive == 0L || ts < firstScreenInteractive) {
                     firstScreenInteractive = ts;
-                }
-            } else if (type == UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                if (firstForeground == 0L || ts < firstForeground) {
-                    firstForeground = ts;
                 }
             }
         }
         if (firstKeyguardHidden > 0L) {
             return firstKeyguardHidden;
         }
-        if (firstScreenInteractive > 0L) {
-            return firstScreenInteractive;
+        return firstScreenInteractive; // 有锁屏的设备上恒为 0：今天真的还没解锁过
+    }
+
+    /**
+     * 最近 windowMs 内系统历史里有没有发生过**真正的解锁**（KEYGUARD_HIDDEN）。
+     * 用来把"熄屏宽限期内的亮屏"（用户没解锁）和"刚刚解锁了"区分开。
+     *
+     * 无法判断时（没有使用情况权限 / 查询失败 / 完全读不到事件）返回 true，让调用方退回原本的
+     * 宽松判定——宁可记上，也不要因为权限缺失而彻底不记。
+     */
+    public static boolean hasRecentUnlockEvidence(Context context, long windowMs) {
+        if (context == null) {
+            return true;
         }
-        return firstForeground; // 可能为 0（今天还没用过任何应用）
+        UsageStatsManager usm = (UsageStatsManager) context.getApplicationContext()
+                .getSystemService(Context.USAGE_STATS_SERVICE);
+        if (usm == null) {
+            return true;
+        }
+        long now = System.currentTimeMillis();
+        UsageEvents events;
+        try {
+            events = usm.queryEvents(now - windowMs, now);
+        } catch (Throwable t) {
+            return true;
+        }
+        if (events == null) {
+            return true;
+        }
+        boolean sawAnyEvent = false;
+        UsageEvents.Event event = new UsageEvents.Event();
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event);
+            sawAnyEvent = true;
+            if (event.getEventType() == KEYGUARD_HIDDEN) {
+                return true;
+            }
+        }
+        // 刚亮过屏却一个事件都读不到，基本只可能是没有使用情况权限 → 按"无法判断"处理。
+        return !sawAnyEvent;
+    }
+
+    private static boolean isDeviceSecure(Context context) {
+        KeyguardManager km = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
+        return km != null && km.isDeviceSecure();
     }
 
     private static void notifyDashboardRefresh(Context context) {
