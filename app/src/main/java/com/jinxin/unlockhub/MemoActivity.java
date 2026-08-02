@@ -336,10 +336,12 @@ public final class MemoActivity extends BaseActivity {
         return card;
     }
 
+    /** 卡片里默认展开的清单条目数，多出来的折叠起来，点一下才展开。 */
+    private static final int CHECKLIST_PREVIEW_ITEMS = 2;
+
     /**
      * 把清单条目直接铺在卡片里，每项一个可点的复选框。
      *
-     * 全部列出而不是只显示前几条：截断的话长清单还是得进编辑页才能勾，就白改了。
      * 勾选只写库、就地更新这张卡片，不重建整个列表——否则手指底下的卡片会因为重新排序跳走。
      */
     private void addChecklistRows(LinearLayout card, Memo memo) {
@@ -353,6 +355,7 @@ public final class MemoActivity extends BaseActivity {
         card.addView(progress);
         updateChecklistProgress(progress, items);
 
+        final List<View> hidden = new ArrayList<>();
         for (int i = 0; i < items.size(); i++) {
             final int index = i;
             final CheckBox box = new CheckBox(this);
@@ -367,8 +370,9 @@ public final class MemoActivity extends BaseActivity {
                 boolean checked = box.isChecked();
                 items.get(index).checked = checked;
                 repository.setChecklistItemChecked(memo.id, index, checked);
-                // 动过它就算看过了，与"打开这条备忘"一致（也会因此停止解锁弹窗）。
-                if (memo.unread) {
+                // 只勾掉其中一两项不算处理完。这时若转已读，卡片会立刻置灰下沉、
+                // 并开始 30 天自动删除倒计时，可事情根本还没做完。整张清单勾满才算。
+                if (memo.unread && allChecked(items)) {
                     repository.setUnread(memo.id, false);
                     memo.unread = false;
                 }
@@ -377,7 +381,39 @@ public final class MemoActivity extends BaseActivity {
                 MemoNotifier.updateBadge(this);
             });
             card.addView(box);
+            if (index >= CHECKLIST_PREVIEW_ITEMS) {
+                box.setVisibility(View.GONE);
+                hidden.add(box);
+            }
         }
+
+        if (hidden.isEmpty()) {
+            return;
+        }
+        final TextView toggle = AppUi.body(this, getString(R.string.memo_checklist_expand, hidden.size()));
+        toggle.setTextSize(13);
+        toggle.setTextColor(getColor(R.color.accent));
+        toggle.setPadding(0, AppUi.dp(this, 6), 0, 0);
+        toggle.setClickable(true);
+        toggle.setOnClickListener(v -> {
+            boolean expanding = hidden.get(0).getVisibility() == View.GONE;
+            for (View view : hidden) {
+                view.setVisibility(expanding ? View.VISIBLE : View.GONE);
+            }
+            toggle.setText(expanding
+                    ? getString(R.string.memo_checklist_collapse)
+                    : getString(R.string.memo_checklist_expand, hidden.size()));
+        });
+        card.addView(toggle);
+    }
+
+    private boolean allChecked(List<Memo.Item> items) {
+        for (Memo.Item item : items) {
+            if (!item.checked) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void updateChecklistProgress(TextView view, List<Memo.Item> items) {

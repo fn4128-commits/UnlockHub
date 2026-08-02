@@ -598,6 +598,8 @@
     <string name="memo_badge_private">🔒 Private  </string>
     <string name="memo_badge_unlockpopup">🔔 Unlock popup  </string>
     <string name="memo_badge_plain">📄 Record  </string>
+    <string name="memo_checklist_expand">Show %1$d more</string>
+    <string name="memo_checklist_collapse">Show less</string>
     <string name="memo_action_pin">Pin</string>
     <string name="memo_action_unpin">Unpin</string>
     <string name="memo_action_mark_done">Mark as done</string>
