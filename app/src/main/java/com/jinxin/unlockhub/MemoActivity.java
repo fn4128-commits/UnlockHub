@@ -9,6 +9,7 @@ import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
@@ -289,11 +290,16 @@ public final class MemoActivity extends BaseActivity {
         }
         card.addView(titleView);
 
-        String preview = memo.preview();
-        if (!preview.isEmpty()) {
-            TextView previewView = AppUi.body(this, preview);
-            previewView.setPadding(0, AppUi.dp(this, 4), 0, 0);
-            card.addView(previewView);
+        if (memo.isChecklist()) {
+            // 清单直接在列表里勾，不用为了打一个勾专门进编辑页。
+            addChecklistRows(card, memo);
+        } else {
+            String preview = memo.preview();
+            if (!preview.isEmpty()) {
+                TextView previewView = AppUi.body(this, preview);
+                previewView.setPadding(0, AppUi.dp(this, 4), 0, 0);
+                card.addView(previewView);
+            }
         }
 
         // 已读备忘显示自动删除倒计时；剩 3 天内标红提示。想留住就取消已读或置顶。
@@ -328,6 +334,69 @@ public final class MemoActivity extends BaseActivity {
             return true;
         });
         return card;
+    }
+
+    /**
+     * 把清单条目直接铺在卡片里，每项一个可点的复选框。
+     *
+     * 全部列出而不是只显示前几条：截断的话长清单还是得进编辑页才能勾，就白改了。
+     * 勾选只写库、就地更新这张卡片，不重建整个列表——否则手指底下的卡片会因为重新排序跳走。
+     */
+    private void addChecklistRows(LinearLayout card, Memo memo) {
+        final List<Memo.Item> items = memo.checklistItems();
+        if (items.isEmpty()) {
+            return;
+        }
+        final TextView progress = AppUi.body(this, "");
+        progress.setTextSize(12);
+        progress.setPadding(0, AppUi.dp(this, 4), 0, 0);
+        card.addView(progress);
+        updateChecklistProgress(progress, items);
+
+        for (int i = 0; i < items.size(); i++) {
+            final int index = i;
+            final CheckBox box = new CheckBox(this);
+            AppUi.styleToggle(box);
+            box.setText(items.get(i).text);
+            box.setTextSize(14);
+            box.setPadding(0, AppUi.dp(this, 2), 0, AppUi.dp(this, 2));
+            box.setChecked(items.get(i).checked);
+            styleChecklistItem(box, items.get(i).checked);
+            // 用 OnClick 而不是 OnCheckedChange：后者在上面 setChecked 时也会触发。
+            box.setOnClickListener(v -> {
+                boolean checked = box.isChecked();
+                items.get(index).checked = checked;
+                repository.setChecklistItemChecked(memo.id, index, checked);
+                // 动过它就算看过了，与"打开这条备忘"一致（也会因此停止解锁弹窗）。
+                if (memo.unread) {
+                    repository.setUnread(memo.id, false);
+                    memo.unread = false;
+                }
+                styleChecklistItem(box, checked);
+                updateChecklistProgress(progress, items);
+                MemoNotifier.updateBadge(this);
+            });
+            card.addView(box);
+        }
+    }
+
+    private void updateChecklistProgress(TextView view, List<Memo.Item> items) {
+        int done = 0;
+        for (Memo.Item item : items) {
+            if (item.checked) {
+                done++;
+            }
+        }
+        view.setText(done + "/" + items.size());
+    }
+
+    private void styleChecklistItem(CheckBox box, boolean checked) {
+        box.setTextColor(AppUi.themeColor(this,
+                checked ? R.attr.appTextSecondary : R.attr.appTextPrimary));
+        int flags = box.getPaintFlags();
+        box.setPaintFlags(checked
+                ? flags | android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
+                : flags & ~android.graphics.Paint.STRIKE_THRU_TEXT_FLAG);
     }
 
     private String buildBadges(Memo memo) {

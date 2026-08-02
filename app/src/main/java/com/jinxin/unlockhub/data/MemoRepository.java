@@ -184,6 +184,26 @@ public final class MemoRepository {
                 new String[]{String.valueOf(cutoff), String.valueOf(now)});
     }
 
+    /**
+     * 勾选/取消清单里的某一项，把结果写回 content。
+     * 供列表页直接勾选用——不必为了打一个勾就进编辑页。
+     */
+    public void setChecklistItemChecked(long id, int index, boolean checked) {
+        Memo memo = findById(id);
+        if (memo == null || !memo.isChecklist()) {
+            return;
+        }
+        List<Memo.Item> items = memo.checklistItems();
+        if (index < 0 || index >= items.size()) {
+            return; // 列表与库不同步（例如另一处刚删过条目），忽略这次点击
+        }
+        items.get(index).checked = checked;
+        ContentValues values = new ContentValues();
+        values.put("content", Memo.encodeChecklist(items));
+        values.put("updated_at", System.currentTimeMillis());
+        helper.getWritableDatabase().update("memos", values, "id = ?", new String[]{String.valueOf(id)});
+    }
+
     public void setDone(long id, boolean done) {
         ContentValues values = new ContentValues();
         values.put("done", done ? 1 : 0);
